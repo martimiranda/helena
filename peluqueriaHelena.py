@@ -10,6 +10,112 @@ from PyQt6.QtSvg import QSvgRenderer
 import sqlite3
 import sys
 
+class DialogoConfirmacion(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.setWindowTitle('Confirmar Eliminació')
+        self.setFixedSize(600, 400)  # Tamaño fijo
+
+        # Crear diseño vertical
+        layout = QGridLayout()
+        layout_arriba = QGridLayout()
+        layout_abajo = QGridLayout()
+
+        # Etiqueta con el mensaje
+        icono = QLabel()
+        svg_renderer = QSvgRenderer('error-svg.svg')
+        svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        icon = QIcon(svg_pixmap)
+
+        icono.setPixmap(svg_pixmap)
+        icono.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        mensaje = QLabel("¿Vols eliminar per sempre aquest client?\nSi l'elimines no es podra recuperar.")
+        mensaje.setStyleSheet("""
+            QLabel {
+                font-size: 16px;
+                font-weight: bold;
+            }
+        """)
+
+        layout_arriba.addWidget(icono,0,0)
+        layout_arriba.addWidget(mensaje,0,1)
+        layout_arriba.setColumnStretch(0,5)
+        layout_arriba.setColumnStretch(1,5)
+
+
+
+        # Etiqueta con el ícono
+       
+
+        # Botones de confirmación
+        aceptar_btn = QPushButton('Acceptar')
+        aceptar_btn.setStyleSheet(""" QPushButton{
+            
+            font-size: 16px;
+            border: 1px solid black;
+            border-radius: 10px;
+
+
+        } 
+        
+        QPushButton:hover {
+        background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+        border: 2px solid #FFA500;  /* Borde naranja */
+        color: white;  /* Cambiar el color del texto a blanco */
+          /* Cambiar el cursor a una mano */
+        }
+        
+        """)
+        aceptar_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        aceptar_btn.clicked.connect(self.aceptar)
+
+        cancelar_btn = QPushButton('Cancelar')
+        cancelar_btn.setStyleSheet(""" QPushButton{
+            
+            font-size: 16px;
+            border: 1px solid black;
+            border-radius: 10px;
+
+
+        } 
+        
+        QPushButton:hover {
+        background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+        border: 2px solid #FFA500;  /* Borde naranja */
+        color: white;  /* Cambiar el color del texto a blanco */
+          /* Cambiar el cursor a una mano */
+        }
+        
+        """)
+        cancelar_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        cancelar_btn.clicked.connect(self.rechazar)
+
+        layout_abajo.addWidget(aceptar_btn,0,0)
+        layout_abajo.addWidget(cancelar_btn,0,1)
+        layout_abajo.setColumnStretch(0,5)
+        layout_abajo.setColumnStretch(1,5)
+
+        layout.addLayout(layout_arriba,0,0)
+        layout.addLayout(layout_abajo,1,0)
+        layout.setRowStretch(0,8)
+        layout.setRowStretch(1,2)
+
+
+        self.setLayout(layout)
+
+    def aceptar(self):
+        self.accept()  # Aceptar el diálogo
+
+    def rechazar(self):
+        self.reject()  # Rechazar el diálogo
+
+
 class VentanaError(QDialog):
     def __init__(self, mensaje, parent=None):
         super().__init__(parent)
@@ -326,49 +432,6 @@ class MainWindow(QMainWindow):
             # Asegurarse de que la conexión se cierre al final
             conn.close()
 
-
-
-    def on_scroll_clients(self):
-        # Comprobar si el scroll ha llegado al final
-        if self.tablaClientes.verticalScrollBar().value() == self.tablaClientes.verticalScrollBar().maximum():
-            # Incrementar el offset para la paginación
-            self.offset += self.limit
-            # Cargar más datos
-            self.load_data_clients()
-
-    def load_more_clients(self):
-        if self.tablaClientes.verticalScrollBar().value() == self.tablaClientes.verticalScrollBar().maximum():
-
-            self.offset += self.limit
-            conn = sqlite3.connect('data.db')
-            cursor = conn.cursor()
-            self.params_list[-1] = f'{self.offset}'
-            params = tuple(self.params_list)
-            try:
-                cursor.execute(self.query, params)
-
-                rows = cursor.fetchall()
-
-                if len(rows) == 0:
-                    pass
-                else:
-                    # Si hay resultados, mostrar la tabla y ocultar el mensaje de "sin datos"
-                    for row in rows:
-                        row_position = self.tablaClientes.rowCount()
-                        self.tablaClientes.insertRow(row_position)
-                        for column, value in enumerate(row):
-                            item = QTableWidgetItem(str(value))  # Convertir el valor a cadena
-                            item.setFont(QFont("Arial", 16))  # Ajustar el tamaño de la fuente
-                            self.tablaClientes.setItem(row_position, column, item)
-
-                
-            finally:
-                # Asegurarse de cerrar la conexión
-                conn.close()
-
-
-
-
     def buscar_clientes(self, texto_buscado):
         # Conectar a la base de datos
         self.offset = 0
@@ -463,14 +526,14 @@ class MainWindow(QMainWindow):
         print(tipus_client)
 
         if tipus_client == "0":
-            self.checkbox_antic.setChecked(False)
-            self.checkbox_nou.setChecked(True)
+            self.boto_antic.setIcon(QIcon())
+            self.boto_nou.setIcon(self.icon_check)
         elif tipus_client == "1":
-            self.checkbox_antic.setChecked(True)
-            self.checkbox_nou.setChecked(False)
+            self.boto_antic.setIcon(self.icon_check)
+            self.boto_nou.setIcon(QIcon())
         else:
-            self.checkbox_antic.setChecked(False)
-            self.checkbox_nou.setChecked(False)
+            self.boto_antic.setIcon(QIcon())
+            self.boto_nou.setIcon(QIcon())
 
         self.nom_value_label.setText(nom)
         self.cognoms_value_label.setText(cognoms)
@@ -479,6 +542,7 @@ class MainWindow(QMainWindow):
         self.hide_edit_client()
 
         self.no_click.hide()
+        self.ficha_creacionUsuario.hide()
         self.ficha_usuario.show()
         # Llamar a la función con el ID del cliente
         #self.procesar_cliente(id_cliente)
@@ -486,8 +550,10 @@ class MainWindow(QMainWindow):
     def cargarEstructuraInferior(self):
         self.cargarBotonesNuevoyCalculs()
         self.cargarEstructuraDatosUsuario()
+        self.cargarCreacionUsuario()
         self.estructuraInferior = QGridLayout()
         self.estructuraInferior.addLayout(self.estructuraInferiorIzquierda,0,0) 
+        self.estructuraInferior.addWidget(self.ficha_creacionUsuario,0,1)
         self.estructuraInferior.addWidget(self.ficha_usuario,0,1)
         self.estructuraInferior.addWidget(self.no_click,0,1)
         self.estructuraInferior.setColumnStretch(0,3)
@@ -808,46 +874,61 @@ class MainWindow(QMainWindow):
         informacio_usuari.setColumnStretch(1, 4)  # Columna 1 ocupa el 40%
         informacio_usuari.setColumnStretch(2, 2)
 
+        svg_renderer = QSvgRenderer('tickConfirm-svg.svg')
+        svg_pixmap = QPixmap(34, 34)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+
+        self.icon_check = QIcon(svg_pixmap)
+
         layout_eleccion = QGridLayout()
-        self.checkbox_nou = QCheckBox("Client nou")
-        self.checkbox_antic = QCheckBox("Client antic")
+        self.boto_nou = QPushButton("Client nou")
+        self.boto_antic = QPushButton("Client antic")
 
-        self.checkbox_nou.setStyleSheet("""
-        QCheckBox {
-            font-size: 16px;
-            padding: 5px;
-            border-radius: 10px;
+        self.boto_nou.setStyleSheet(""" QPushButton{
             
-        }
-        QCheckBox:checked {
-            font-weight:bold;
-            border: 1px solid orange;
-
-
-        }
-        """)
-
-        self.checkbox_antic.setStyleSheet("""
-        QCheckBox {
-            font-size: 16px;
-            padding: 5px;
+            font-size: 14px;
+            border: 1px solid black;
             border-radius: 10px;
 
-
-        }
-        QCheckBox:checked {
-            font-weight:bold;
-            border: 1px solid orange;
-
-        }
+        } 
+        
+        QPushButton:hover {
+        background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+        border: 2px solid #FFA500;  /* Borde naranja */
+        color: white;  /* Cambiar el color del texto a blanco */
+          /* Cambiar el cursor a una mano */
+    }
+        
         """)
 
-        self.checkbox_antic.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.checkbox_nou.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.boto_antic.setStyleSheet(""" QPushButton{
+            
+            font-size: 14px;
+            border: 1px solid black;
+            border-radius: 10px;
+
+        } 
+        
+        QPushButton:hover {
+        background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+        border: 2px solid #FFA500;  /* Borde naranja */
+        color: white;  /* Cambiar el color del texto a blanco */
+          /* Cambiar el cursor a una mano */
+    }
+        
+        """)
+
+        self.boto_antic.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.boto_nou.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.boto_antic.clicked.connect(self.client_antic_click)
+        self.boto_nou.clicked.connect(self.client_nou_click)
 
 
-        layout_eleccion.addWidget(self.checkbox_antic,0,0)
-        layout_eleccion.addWidget(self.checkbox_nou,0,1)
+        layout_eleccion.addWidget(self.boto_antic,0,0)
+        layout_eleccion.addWidget(self.boto_nou,0,1)
 
         layout_tipus_client = QGridLayout()
         label_tipus = QLabel("Tipus de client:")
@@ -1056,7 +1137,12 @@ class MainWindow(QMainWindow):
 
 
     def crear_usuario(self):
-        pass
+        self.no_click.hide()
+        self.ficha_usuario.hide()
+        #valores inputs a 0
+        self.ficha_creacionUsuario.show()
+
+        
     
     def calculs(self):
         pass
@@ -1219,7 +1305,53 @@ class MainWindow(QMainWindow):
         self.accept_phone_button.show()
 
     def aceptar_telefono(self):
-        pass
+        telefono = self.inputTelefono.text()
+        telefono = telefono.strip()  # Elimina los espacios iniciales y finales
+        telefono = telefono.replace(" ", "")
+        for caracter in telefono:
+            if not caracter.isdigit():
+                ventana_error = VentanaError("El telefon nomes pot contindre numeros", self)
+                ventana_error.exec()
+                return 
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+
+        try:
+            
+            update_query = '''
+                UPDATE Client
+                SET Telefon = ?
+                WHERE Id = ?;
+            '''
+            
+            # Ejecutar la query con los parámetros
+            cursor.execute(update_query, (telefono, self.id_cliente))
+            
+            # Confirmar los cambios
+            conn.commit()
+
+            self.telefon_value_label.setText(telefono)
+
+            self.buscar_clientes(self.barraBusqueda.text())
+            
+            self.edit_telefon_button.show()
+            self.telefon_value_label.show()
+            self.inputTelefono.hide()
+            self.accept_phone_button.hide()
+
+
+
+            
+        except sqlite3.Error as e:
+            ventana_error = VentanaError("Alguna cosa no tenia que haber pasat, parla amb Martí sobre aquest error", self)
+            ventana_error.exec()
+            print(f"Error al actualizar el cliente: {e}")
+            
+        finally:
+            conn.close()
+        
+
+
 
     def hide_edit_client(self):
         self.edit_name_button.show()
@@ -1241,7 +1373,30 @@ class MainWindow(QMainWindow):
 
     
     def eliminar_usuario(self):
-        pass
+        dialogo = DialogoConfirmacion(self)
+        if dialogo.exec() == QDialog.DialogCode.Accepted:
+            try:
+                conn = sqlite3.connect('data.db')  # Conectar a la base de datos
+                cursor = conn.cursor()
+
+                # Supongamos que `self.id_cliente` contiene el ID del cliente a eliminar
+                delete_query = 'DELETE FROM Client WHERE Id = ?'
+                cursor.execute(delete_query, (self.id_cliente,))
+
+                # Confirmar cambios en la base de datos
+                conn.commit()
+
+                self.ficha_usuario.hide() 
+                self.no_click.show()
+
+                self.buscar_clientes(self.barraBusqueda.text())
+
+
+            except sqlite3.Error as e:
+                print(f"Error al eliminar el cliente: {e}")
+
+            finally:
+                conn.close()
 
     def servicios_usuario(self):
         pass
@@ -1256,6 +1411,230 @@ class MainWindow(QMainWindow):
             widget = layout.itemAt(i).widget()
             if widget is not None:
                 widget.show()
+    def client_antic_click(self):
+        
+        if self.boto_antic.icon().cacheKey()!= 0:
+            self.actualizar_cliente_tipo(None)
+            self.boto_antic.setIcon(QIcon())
+
+        else:
+            self.actualizar_cliente_tipo(1)
+            self.boto_nou.setIcon(QIcon())
+            self.boto_antic.setIcon(self.icon_check)
+            
+            # Funcionalidad cuando está desactivado
+    def client_nou_click(self):
+        if self.boto_nou.icon().cacheKey() != 0:
+            self.actualizar_cliente_tipo(None)
+            self.boto_nou.setIcon(QIcon())
+
+        else:
+            self.actualizar_cliente_tipo(0)
+            self.boto_antic.setIcon(QIcon())
+            self.boto_nou.setIcon(self.icon_check)
+        # Funcionalidad cuando está desactivado
+
+    
+    def actualizar_cliente_tipo(self,client_antic):
+        conn = sqlite3.connect('data.db')  # Conectar a la base de datos
+        cursor = conn.cursor()
+
+        try:
+            # Consulta para actualizar tanto Telefon como Client_antic
+            update_query = '''
+                UPDATE Client
+                SET Client_antic = ?
+                WHERE Id = ?;
+            '''
+            
+            # Ejecutar la query con los parámetros (telefono y client_antic)
+            cursor.execute(update_query, (client_antic, self.id_cliente))
+            
+            # Confirmar los cambios
+            conn.commit()
+
+            # Actualizar la interfaz de usuario
+            self.buscar_clientes(self.barraBusqueda.text())
+
+
+        except sqlite3.Error as e:
+            ventana_error = VentanaError("Alguna cosa no tenia que haver pasat, parla amb Martí sobre aquest error", self)
+            ventana_error.exec()
+            print(f"Error al actualizar el cliente: {e}")
+
+        finally:
+            # Cerrar la conexión a la base de datos
+            conn.close()
+
+    
+
+    
+
+    def load_more_clients(self):
+        if self.tablaClientes.verticalScrollBar().value() == self.tablaClientes.verticalScrollBar().maximum():
+
+            self.offset += self.limit
+            conn = sqlite3.connect('data.db')
+            cursor = conn.cursor()
+            self.params_list[-1] = f'{self.offset}'
+            params = tuple(self.params_list)
+            try:
+                cursor.execute(self.query, params)
+
+                rows = cursor.fetchall()
+
+                if len(rows) == 0:
+                    pass
+                else:
+                    # Si hay resultados, mostrar la tabla y ocultar el mensaje de "sin datos"
+                    for row in rows:
+                        row_position = self.tablaClientes.rowCount()
+                        self.tablaClientes.insertRow(row_position)
+                        for column, value in enumerate(row):
+                            item = QTableWidgetItem(str(value))  # Convertir el valor a cadena
+                            item.setFont(QFont("Arial", 16))  # Ajustar el tamaño de la fuente
+                            self.tablaClientes.setItem(row_position, column, item)
+
+                
+            finally:
+                # Asegurarse de cerrar la conexión
+                conn.close()
+
+    def cargarCreacionUsuario(self):
+        self.ficha_creacionUsuario = QWidget(self)  
+        # Estilo aplicado al widget que contiene el layout
+        self.ficha_creacionUsuario.setStyleSheet("""
+            background-color: transparent;
+            border: 1px solid #d3d3d3;
+        """)
+        self.ficha_creacionUsuario.hide()
+        
+        estilosInput= """
+            QLineEdit {
+                border: 2px solid orange;
+                border-radius: 15px;  /* Cambia este valor para ajustar el redondeado */
+                padding: 5px;  /* Añade un poco de espacio interior */
+                font-size: 16px;  /* Tamaño de fuente */
+            }
+        """
+
+        label_style = """
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+        """
+
+        estiloBoton= """ QPushButton{
+            
+            font-size: 16px;
+            border: 1px solid black;
+            border-radius: 10px;
+
+
+        } 
+        
+        QPushButton:hover {
+        background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+        border: 2px solid #FFA500;  /* Borde naranja */
+        color: white;  /* Cambiar el color del texto a blanco */
+          /* Cambiar el cursor a una mano */
+        }
+        
+        """
+
+        # Crear el layout principal de la ficha de usuario
+        layout_fichaCreacionsuario = QGridLayout(self.ficha_creacionUsuario)
+
+
+        # Añadir widgets dentro del contenedor (QWidget)
+        label = QLabel("Creació de client")
+        label.setStyleSheet("""
+            font-weight: 100; /* Peso de la fuente (más fino) */
+            background-color: rgba(255, 165, 0, 100);
+            border: 1px solid #d3d3d3;
+            border-radius: 10px;
+            font-weight: bold;  /* Encabezados en negrita */
+            font-size: 18px;
+            text-align: center;
+
+        """)
+        layout_datosUsuario = QGridLayout()
+        layout_abajo = QGridLayout()
+
+        nom_label = QLabel("Nom:")
+        nom_label.setStyleSheet(label_style)
+
+        cognoms_label = QLabel("Cognoms:")
+        cognoms_label.setStyleSheet(label_style)
+
+        color_label = QLabel("Color:")
+        color_label.setStyleSheet(label_style)
+
+        telefon_label = QLabel("Telèfon:")
+        telefon_label.setStyleSheet(label_style)
+
+        
+
+        self.inputNombreCreacion = QLineEdit(self)
+        self.inputNombreCreacion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.inputNombreCreacion.setStyleSheet(estilosInput)
+
+        self.inputApellidosCreacion = QLineEdit(self)
+        self.inputApellidosCreacion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.inputApellidosCreacion.setStyleSheet(estilosInput)
+
+        self.inputColorCreacion = QLineEdit(self)
+        self.inputColorCreacion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.inputColorCreacion.setStyleSheet(estilosInput)
+
+        self.inputTelefonoCreacion = QLineEdit(self)
+        self.inputTelefonoCreacion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.inputTelefonoCreacion.setStyleSheet(estilosInput)
+
+        layout_datosUsuario.addWidget(nom_label,0,0)
+        layout_datosUsuario.addWidget(self.inputNombreCreacion,0,1)
+        layout_datosUsuario.addWidget(cognoms_label,1,0)
+        layout_datosUsuario.addWidget(self.inputApellidosCreacion,1,1)
+        layout_datosUsuario.addWidget(color_label,2,0)
+        layout_datosUsuario.addWidget(self.inputColorCreacion,2,1)
+        layout_datosUsuario.addWidget(telefon_label,3,0)
+        layout_datosUsuario.addWidget(self.inputTelefonoCreacion,3,1)
+        layout_datosUsuario.setColumnStretch(0,5)
+        layout_datosUsuario.setColumnStretch(1,5)
+
+        aceptar_btn = QPushButton('Crear')
+        aceptar_btn.setStyleSheet(estiloBoton)
+        aceptar_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        #aceptar_btn.clicked.connect(self.aceptar)
+
+        cancelar_btn = QPushButton('Cancelar')
+        cancelar_btn.setStyleSheet(estiloBoton)
+        cancelar_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        #cancelar_btn.clicked.connect(self.rechazar)
+
+        layout_abajo.addWidget(aceptar_btn,0,0)
+        layout_abajo.addWidget(cancelar_btn,0,1)
+        layout_abajo.setColumnStretch(0,5)
+        layout_abajo.setColumnStretch(1,5)
+
+
+
+        layout_fichaCreacionsuario.addWidget(label,0,0)
+        layout_fichaCreacionsuario.addLayout(layout_datosUsuario,1,0)
+        layout_fichaCreacionsuario.addLayout(layout_abajo,2,0)
+
+
+        layout_fichaCreacionsuario.setRowStretch(0,2)
+        layout_fichaCreacionsuario.setRowStretch(1,6)
+        layout_fichaCreacionsuario.setRowStretch(2,2)
+
+        
+
+
+
+
+
+
 
 
 
