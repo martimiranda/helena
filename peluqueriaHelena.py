@@ -1,18 +1,18 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QLineEdit, QTableWidget, 
     QTableWidgetItem, QPushButton, QWidget, QVBoxLayout, QGridLayout, QSizePolicy, 
-    QHeaderView, QScrollBar,QCheckBox, QMessageBox, QDialog
+    QHeaderView, QScrollBar,QCheckBox, QMessageBox, QDialog, QDateEdit
 )
 from PyQt6.QtGui import QPixmap, QFont, QIcon, QPainter
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt,QDate
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtSvg import QSvgRenderer
-import sqlite3
-import sys
+import sqlite3, sys, re
 
 class DialogoConfirmacion(QDialog):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, mensajeClase= None):
         super().__init__(parent)
+
 
         self.setWindowTitle('Confirmar Eliminació')
         self.setFixedSize(600, 400)  # Tamaño fijo
@@ -42,6 +42,17 @@ class DialogoConfirmacion(QDialog):
                 font-weight: bold;
             }
         """)
+
+        if mensajeClase is not None:
+            mensaje = QLabel("¿Vols eliminar per sempre aquest servei?\nSi l'elimines no es podra recuperar.")
+            mensaje.setStyleSheet("""
+                QLabel {
+                    font-size: 16px;
+                    font-weight: bold;
+                }
+            """)
+
+    
 
         layout_arriba.addWidget(icono,0,0)
         layout_arriba.addWidget(mensaje,0,1)
@@ -195,6 +206,1006 @@ class VentanaError(QDialog):
         # Conectar el botón de cerrar
         botonCerrar.clicked.connect(self.close)
 
+class VentanaServicios(QMainWindow):
+    def __init__(self,parent= None):
+        super().__init__(parent)
+
+        # Guardar la variable recibida
+        self.parent_window = parent
+
+        
+
+        self.id_cliente = self.parent_window.id_cliente
+        self.nombre = self.parent_window.nom_value_label.text()
+        print(self.id_cliente)
+
+        # Configurar la ventana
+        self.setWindowTitle("Serveis de "+ self.nombre)
+        self.setGeometry(100, 100, 1400, 800)
+
+        self.generar_contenido()
+        self.show()
+
+
+
+    def generar_contenido(self):
+        self.setStyleSheet("background-color: white;")
+        self.imagen_fondo_label = QLabel(self)
+        pixmap = QPixmap('icono.png')  # Cargar la imagen
+        self.imagen_fondo_label.setPixmap(pixmap)
+        self.imagen_fondo_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.estructuraExterna()
+
+    def estructuraExterna(self):
+        
+        self.contenido_central = QGridLayout()
+        self.layoutFondo = QGridLayout()
+       
+        self.layoutFondo.addWidget(QLabel(), 0, 0)
+        self.layoutFondo.addWidget(self.imagen_fondo_label, 0, 1)
+        self.layoutFondo.addLayout(self.contenido_central, 0, 1)
+        self.layoutFondo.addWidget(QLabel(), 0, 2)
+        self.layoutFondo.setColumnStretch(0, 1)
+        self.layoutFondo.setColumnStretch(1, 8)
+        self.layoutFondo.setColumnStretch(2, 1)
+
+        contenedor_widget = QWidget()
+        contenedor_widget.setLayout(self.layoutFondo)
+        self.setCentralWidget(contenedor_widget)
+        self.estructura_central()
+
+    def estructura_central(self):
+        self.cargarEstructuraSuperior()
+        self.cargarCreacionInferior()
+        self.cargarEdicionInferior()
+        self.contenido_central.addWidget(self.label_superior, 0, 0)
+        self.contenido_central.addWidget(self.tablaClientes, 1, 0)
+        self.contenido_central.addWidget(self.no_data_client, 1, 0)
+        self.contenido_central.addWidget(self.estructuraCreacionInferior,2,0)
+        self.contenido_central.addWidget(self.estructuraEdicionInferior,2,0)
+
+
+        self.contenido_central.setRowStretch(0, 1)
+        self.contenido_central.setRowStretch(1, 4)
+        self.contenido_central.setRowStretch(2, 5)
+
+
+    def cargarEstructuraSuperior(self):
+        self.label_superior = QLabel("Serveis de "+ self.nombre)
+        self.label_superior.setStyleSheet("""
+            font-weight: 100; /* Peso de la fuente (más fino) */
+            background-color: rgba(255, 165, 0, 100);
+            border: 1px solid #d3d3d3;
+            border-radius: 10px;
+            font-weight: bold;  /* Encabezados en negrita */
+            font-size: 18px;
+            text-align: center;
+
+        """)
+        self.label_superior.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.tablaClientes = QTableWidget(self)
+        self.tablaClientes.setColumnCount(4)  # Número de columnas
+        self.tablaClientes.setHorizontalHeaderLabels(["Data", "Servei", "Preu"])  # Nombres de las columnas
+        self.tablaClientes.setRowCount(0)  # Inicialmente sin filas
+        self.configure_table()
+
+        # Conectar el evento de scroll
+        self.tablaClientes.verticalScrollBar().valueChanged.connect(self.load_more_serveis)
+        self.tablaClientes.cellClicked.connect(self.on_servicio_click)
+
+        self.tablaClientes.hideColumn(3)
+        # Contadores para la paginación
+        self.offset = 0
+        self.limit = 30
+
+        self.no_data_client = QPushButton(self)
+        self.no_data_client.setText('Aquest client no ha fet cap servei')
+        self.no_data_client.setStyleSheet("""
+            QPushButton {
+                font-weight: 100;
+                background-color: rgba(211, 211, 211, 0.4);                    
+                border: 1px solid #d3d3d3;
+                border-radius: 10px;
+                font-size: 18px;
+                color: black;
+                font-weight: bold;
+            }
+        """)
+        svg_renderer = QSvgRenderer('information-svg.svg')
+        svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        icon = QIcon(svg_pixmap)
+
+        
+
+
+        self.no_data_client.setIcon(icon)
+        self.no_data_client.setIconSize(svg_pixmap.size())
+        self.no_data_client.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.no_data_client.hide()
+
+        self.cargar_servicios()
+
+    def configure_table(self):
+        header = self.tablaClientes.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+
+        # Ocultar el encabezado vertical
+        self.tablaClientes.verticalHeader().setVisible(False)
+
+        # Estilo para la tabla
+        self.tablaClientes.setStyleSheet("""
+            QTableWidget {
+                background: transparent;
+                border: 1px solid #d3d3d3;
+                border-radius: 10px;
+                
+            }
+            QHeaderView::section {
+                background-color: rgba(255, 165, 0, 100);
+                border: none;
+                font-weight: bold;
+                font-size: 18px;
+                border-radius: 10px;
+            }
+            QTableWidget::item {
+                background-color: rgba(255, 255, 255, 150);
+                border: 1px solid #d3d3d3;
+            }
+
+            QTableWidget::item:selected {
+                background-color: rgba(255, 255, 255, 150); /* Mantener el fondo igual */
+                color: black;  /* El color del texto sigue siendo negro (o cualquier color que prefieras) */
+            }
+            
+        """)
+    
+    def cargar_servicios(self):
+        self.offset = 0
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+        try:
+            self.query = '''
+                    SELECT Fecha, Servei, Preu, Id
+                    FROM Serveis
+                    WHERE Client_id = ?
+                    ORDER BY Fecha DESC
+                    LIMIT ? OFFSET ?;
+                '''
+
+            params = (f'{self.id_cliente}', f'{self.limit}',f'{self.offset}')
+
+            self.params_list = list(params)
+            cursor.execute(self.query, params)
+
+            rows = cursor.fetchall()
+
+            if len(rows) == 0:
+                # Si no hay resultados, ocultar la tabla y mostrar un mensaje
+                self.tablaClientes.hide()
+                self.no_data_client.show()
+
+            else:
+                # Si hay resultados, mostrar la tabla y ocultar el mensaje de "sin datos"
+                self.tablaClientes.setRowCount(0)
+                for row in rows:
+                    row_position = self.tablaClientes.rowCount()
+                    self.tablaClientes.insertRow(row_position)
+                    for column, value in enumerate(row):
+                        if column == 2:  # Columna "Preu"
+                            # Si el valor es un número con decimal .0, eliminarlo
+                            if isinstance(value, float) and value.is_integer():
+                                value = int(value)
+                            # Convertir a cadena y agregar el símbolo de euro
+                            value = f'{value}€'
+                        item = QTableWidgetItem(str(value))  # Convertir el valor a cadena
+                        item.setFont(QFont("Arial", 16))  # Ajustar el tamaño de la fuente
+                        self.tablaClientes.setItem(row_position, column, item)
+
+                self.no_data_client.hide()
+                self.tablaClientes.show()
+                
+
+        finally:
+            # Asegurarse de cerrar la conexión
+            conn.close()
+
+    def load_more_serveis(self):
+        if self.tablaClientes.verticalScrollBar().value() == self.tablaClientes.verticalScrollBar().maximum():
+
+            self.offset += self.limit
+            conn = sqlite3.connect('data.db')
+            cursor = conn.cursor()
+            self.params_list[-1] = f'{self.offset}'
+            params = tuple(self.params_list)
+            try:
+                cursor.execute(self.query, params)
+
+                rows = cursor.fetchall()
+
+                if len(rows) == 0:
+                    pass
+                else:
+                    # Si hay resultados, mostrar la tabla y ocultar el mensaje de "sin datos"
+                    for row in rows:
+                        row_position = self.tablaClientes.rowCount()
+                        self.tablaClientes.insertRow(row_position)
+                        for column, value in enumerate(row):
+                            if column == 2:  # Columna "Preu"
+                                # Si el valor es un número con decimal .0, eliminarlo
+                                if isinstance(value, float) and value.is_integer():
+                                    value = int(value)
+                                # Convertir a cadena y agregar el símbolo de euro
+                                value = f'{value}€'
+                            item = QTableWidgetItem(str(value))  # Convertir el valor a cadena
+                            item.setFont(QFont("Arial", 16))  # Ajustar el tamaño de la fuente
+                            self.tablaClientes.setItem(row_position, column, item)
+
+                
+            finally:
+                # Asegurarse de cerrar la conexión
+                conn.close()
+    def cargarCreacionInferior(self):
+        self.estructuraCreacionInferior = QWidget(self)  
+        # Estilo aplicado al widget que contiene el layout
+        self.estructuraCreacionInferior.setStyleSheet("""
+            background-color: transparent;
+            border: 1px solid #d3d3d3;
+        """)
+        
+        estilosInput= """
+            QLineEdit {
+                border: 2px solid orange;
+                border-radius: 15px;  /* Cambia este valor para ajustar el redondeado */
+                padding: 5px;  /* Añade un poco de espacio interior */
+                font-size: 16px;  /* Tamaño de fuente */
+            }
+        """
+
+        label_style = """
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+        """
+
+        estiloBoton= """ QPushButton{
+            
+            font-size: 16px;
+            border: 1px solid black;
+            border-radius: 10px;
+
+
+        } 
+        
+        QPushButton:hover {
+        background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+        border: 2px solid #FFA500;  /* Borde naranja */
+        color: white;  /* Cambiar el color del texto a blanco */
+          /* Cambiar el cursor a una mano */
+        }
+        
+        """
+
+        # Crear el layout principal de la ficha de usuario
+        layout_fichaCreacionServicio = QGridLayout(self.estructuraCreacionInferior)
+
+        label = QLabel("Creació de servei")
+        label.setStyleSheet("""
+            font-weight: 100; /* Peso de la fuente (más fino) */
+            background-color: rgba(255, 165, 0, 100);
+            border: 1px solid #d3d3d3;
+            border-radius: 10px;
+            font-weight: bold;  /* Encabezados en negrita */
+            font-size: 18px;
+            text-align: center;
+
+        """)
+
+        layout_inputs = QGridLayout()
+
+        fecha_label = QLabel("Data:")
+        fecha_label.setStyleSheet(label_style)
+        fecha_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        servicio_label = QLabel("Servei:")
+        servicio_label.setStyleSheet(label_style)
+        servicio_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        precio_label = QLabel("Preu:")
+        precio_label.setStyleSheet(label_style)
+        precio_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.inputFechaCreacion = QLineEdit(self)
+        try:
+            fecha_hoy = QDate.currentDate().toString('dd/MM/yyyy')
+            if not fecha_hoy:
+                raise ValueError("Fecha no válida")
+        except Exception as e:
+            # Si hay algún error al obtener la fecha, mostrar un texto predeterminado
+            fecha_hoy = "dd/mm/yyyy"
+        self.inputFechaCreacion.setText(fecha_hoy)
+        self.inputFechaCreacion.setStyleSheet(estilosInput)
+        self.inputFechaCreacion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+
+        self.inputServeiCreacion = QLineEdit(self)
+        self.inputServeiCreacion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.inputServeiCreacion.setStyleSheet(estilosInput)
+
+        self.inputPreuCreacion = QLineEdit(self)
+        self.inputPreuCreacion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.inputPreuCreacion.setStyleSheet(estilosInput)
+
+        layout_inputs.addWidget(fecha_label,0,0)
+        layout_inputs.addWidget(servicio_label,1,0)
+        layout_inputs.addWidget(precio_label,2,0)
+        layout_inputs.addWidget(self.inputFechaCreacion,0,1)
+        layout_inputs.addWidget(self.inputServeiCreacion,1,1)
+        layout_inputs.addWidget(self.inputPreuCreacion,2,1)
+        layout_inputs.setColumnStretch(0,5)
+        layout_inputs.setColumnStretch(1,5)
+
+
+        create_button = QPushButton(self)
+        create_button.setText('Afegir nou servei')
+        create_button.setStyleSheet(estiloBoton)
+        create_button.clicked.connect(self.crear_servicio)
+
+
+        svg_renderer = QSvgRenderer('crear-svg.svg')
+        svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        iconCrear = QIcon(svg_pixmap)
+
+        create_button.setIcon(iconCrear)
+        create_button.setIconSize(svg_pixmap.size())
+        create_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        close_button = QPushButton(self)
+        close_button.setText('Tancar finestra')
+        close_button.setStyleSheet(estiloBoton)
+        close_button.clicked.connect(self.close)
+
+
+        svg_renderer = QSvgRenderer('cross-svg.svg')
+        svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        iconClose = QIcon(svg_pixmap)
+
+        close_button.setIcon(iconClose)
+        close_button.setIconSize(svg_pixmap.size())
+        close_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        layoutBotones = QGridLayout()
+        layoutBotones.addWidget(create_button,0,0)
+        layoutBotones.addWidget(close_button,0,1)
+        layoutBotones.setColumnStretch(0,5)
+        layoutBotones.setColumnStretch(1,5)
+
+
+        layout_fichaCreacionServicio.addWidget(label,0,0)
+        layout_fichaCreacionServicio.addLayout(layout_inputs,1,0)
+        layout_fichaCreacionServicio.addLayout(layoutBotones,2,0)
+        layout_fichaCreacionServicio.setRowStretch(0,1)
+        layout_fichaCreacionServicio.setRowStretch(1,7)
+        layout_fichaCreacionServicio.setRowStretch(2,2)
+
+
+
+
+    def crear_servicio(self):
+        fecha = self.inputFechaCreacion.text().strip()
+        servei = self.inputServeiCreacion.text()
+        preu = self.inputPreuCreacion.text().strip()
+        preu = preu.replace(",", ".")
+
+        patron = r"^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\d{4}$"
+    
+        # Comprobar si la fecha coincide con el patrón
+        if not re.match(patron, fecha):
+            ventana_error = VentanaError("La data no te un format valid", self)
+            ventana_error.exec()
+            return
+            
+        if len(servei.strip()) == 0:
+            ventana_error = VentanaError("El servei no pot estar buit", self)
+            ventana_error.exec()
+            return
+        try:
+            # Intentar convertir el valor a float
+            preu = float(preu)
+        except ValueError:
+            # Si no es un número válido, devuelve False o un mensaje de error
+            ventana_error = VentanaError("El preu només accepta numeros i no pot estar buit", self)
+            ventana_error.exec()
+            return
+
+        try:
+            # Conectar a la base de datos
+            conn = sqlite3.connect('data.db')
+            cursor = conn.cursor()
+            
+            # Query de inserción para la tabla Serveis
+            insert_query = '''
+                INSERT INTO Serveis (Client_id, Fecha, Preu, Servei)
+                VALUES (?, ?, ?, ?);
+            '''
+            
+           
+            
+            # Ejecutar la query con los parámetros
+            cursor.execute(insert_query, (self.id_cliente, fecha, preu, servei))
+            
+            # Confirmar los cambios
+            conn.commit()
+            
+            self.cargar_servicios()
+            self.inputServeiCreacion.setText("")
+            self.inputPreuCreacion.setText("")
+            
+        except sqlite3.Error as e:
+            print(f"Error al insertar el servicio: {e}")
+            
+        finally:
+            # Cerrar la conexión
+            conn.close()
+
+        
+        
+        
+         
+            
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    def cargarEdicionInferior(self):
+        self.estructuraEdicionInferior = QWidget(self)  
+        # Estilo aplicado al widget que contiene el layout
+        self.estructuraEdicionInferior.setStyleSheet("""
+            background-color: transparent;
+            border: 1px solid #d3d3d3;
+        """)
+        self.estructuraEdicionInferior.hide()
+        
+        estilosInput= """
+            QLineEdit {
+                border: 2px solid orange;
+                border-radius: 15px;  /* Cambia este valor para ajustar el redondeado */
+                padding: 5px;  /* Añade un poco de espacio interior */
+                font-size: 16px;  /* Tamaño de fuente */
+            }
+        """
+
+        label_style = """
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+        """
+
+        estiloBoton= """ QPushButton{
+            
+            font-size: 16px;
+            border: 1px solid black;
+            border-radius: 10px;
+
+
+        } 
+        
+        QPushButton:hover {
+        background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+        border: 2px solid #FFA500;  /* Borde naranja */
+        color: white;  /* Cambiar el color del texto a blanco */
+          /* Cambiar el cursor a una mano */
+        }
+        
+        """
+
+        svg_renderer_edit = QSvgRenderer('edit-svg.svg')
+        svg_pixmap_edit = QPixmap(24, 24)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap_edit.fill(Qt.GlobalColor.transparent)
+        painter_edit = QPainter(svg_pixmap_edit)
+        svg_renderer_edit.render(painter_edit)
+        painter_edit.end()
+
+        icon_edit = QIcon(svg_pixmap_edit)
+
+        svg_renderer = QSvgRenderer('tick-svg.svg')
+        svg_pixmap = QPixmap(24, 24)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+
+        icon = QIcon(svg_pixmap)
+
+        svg_renderer_drop = QSvgRenderer('trash-svg.svg')
+        svg_pixmap_drop = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap_drop.fill(Qt.GlobalColor.transparent)
+        painter_drop = QPainter(svg_pixmap_drop)
+        svg_renderer_drop.render(painter_drop)
+        painter_drop.end()
+
+        icon_drop = QIcon(svg_pixmap_drop)
+
+
+        # Crear el layout principal de la ficha de usuari
+
+        # Crear el layout principal de la ficha de usuario
+        layout_fichaEdicionServicio = QGridLayout(self.estructuraEdicionInferior)
+
+        label = QLabel("Edició de servei")
+        label.setStyleSheet("""
+            font-weight: 100; /* Peso de la fuente (más fino) */
+            background-color: rgba(255, 165, 0, 100);
+            border: 1px solid #d3d3d3;
+            border-radius: 10px;
+            font-weight: bold;  /* Encabezados en negrita */
+            font-size: 18px;
+            text-align: center;
+
+        """)
+
+        layout_inputs = QGridLayout()
+
+        fecha_label = QLabel("Data:")
+        fecha_label.setStyleSheet(label_style)
+        fecha_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        servicio_label = QLabel("Servei:")
+        servicio_label.setStyleSheet(label_style)
+        servicio_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        precio_label = QLabel("Preu:")
+        precio_label.setStyleSheet(label_style)
+        precio_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+
+        self.fecha_label_value = QLabel()
+        self.fecha_label_value.setStyleSheet(label_style)
+        self.fecha_label_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.servicio_label_value = QLabel()
+        self.servicio_label_value.setStyleSheet(label_style)
+        self.servicio_label_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.precio_label_value = QLabel()
+        self.precio_label_value.setStyleSheet(label_style)
+        self.precio_label_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+
+
+        self.inputFechaEdicion = QLineEdit(self)
+        self.inputFechaEdicion.setStyleSheet(estilosInput)
+        self.inputFechaEdicion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.inputFechaEdicion.returnPressed.connect(self.aceptar_fecha)
+        self.inputFechaEdicion.hide()
+
+
+        self.inputServeiEdicion = QLineEdit(self)
+        self.inputServeiEdicion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.inputServeiEdicion.setStyleSheet(estilosInput)
+        self.inputServeiEdicion.returnPressed.connect(self.aceptar_servei)
+        self.inputServeiEdicion.hide()
+
+        self.inputPreuEdicion = QLineEdit(self)
+        self.inputPreuEdicion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.inputPreuEdicion.setStyleSheet(estilosInput)
+        self.inputPreuEdicion.returnPressed.connect(self.aceptar_preu)
+        self.inputPreuEdicion.hide()
+
+        self.edit_fecha_button = QPushButton(self)
+        self.edit_fecha_button.setText('Editar')
+        self.edit_fecha_button.setStyleSheet(estiloBoton)
+        self.edit_fecha_button.setIcon(icon_edit)
+        self.edit_fecha_button.setIconSize(svg_pixmap_edit.size())
+        self.edit_fecha_button.clicked.connect(self.editar_fecha)
+        self.edit_fecha_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self.edit_servei_button = QPushButton(self)
+        self.edit_servei_button.setText('Editar')
+        self.edit_servei_button.setStyleSheet(estiloBoton)
+        self.edit_servei_button.setIcon(icon_edit)
+        self.edit_servei_button.setIconSize(svg_pixmap_edit.size())
+        self.edit_servei_button.clicked.connect(self.editar_servei)
+        self.edit_servei_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self.edit_preu_button = QPushButton(self)
+        self.edit_preu_button.setText('Editar')
+        self.edit_preu_button.setStyleSheet(estiloBoton)
+        self.edit_preu_button.setIcon(icon_edit)
+        self.edit_preu_button.setIconSize(svg_pixmap_edit.size())
+        self.edit_preu_button.clicked.connect(self.editar_preu)
+        self.edit_preu_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        self.accept_fecha_button = QPushButton(self)
+        self.accept_fecha_button.setText('Acceptar')
+        self.accept_fecha_button.setStyleSheet(estiloBoton)
+        self.accept_fecha_button.setIcon(icon)
+        self.accept_fecha_button.setIconSize(svg_pixmap.size())
+        self.accept_fecha_button.clicked.connect(self.aceptar_fecha)
+        self.accept_fecha_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.accept_fecha_button.hide()
+
+        self.accept_servei_button = QPushButton(self)
+        self.accept_servei_button.setText('Acceptar')
+        self.accept_servei_button.setStyleSheet(estiloBoton)
+        self.accept_servei_button.setIcon(icon)
+        self.accept_servei_button.setIconSize(svg_pixmap.size())
+        self.accept_servei_button.clicked.connect(self.aceptar_servei)
+        self.accept_servei_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.accept_servei_button.hide()
+
+        self.accept_preu_button = QPushButton(self)
+        self.accept_preu_button.setText('Acceptar')
+        self.accept_preu_button.setStyleSheet(estiloBoton)
+        self.accept_preu_button.setIcon(icon)
+        self.accept_preu_button.setIconSize(svg_pixmap.size())
+        self.accept_preu_button.clicked.connect(self.aceptar_preu)
+        self.accept_preu_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.accept_preu_button.hide()
+
+        layout_inputs.addWidget(fecha_label,0,0)
+        layout_inputs.addWidget(servicio_label,1,0)
+        layout_inputs.addWidget(precio_label,2,0)
+        layout_inputs.addWidget(self.inputFechaEdicion,0,1)
+        layout_inputs.addWidget(self.inputServeiEdicion,1,1)
+        layout_inputs.addWidget(self.inputPreuEdicion,2,1)
+        layout_inputs.addWidget(self.fecha_label_value,0,1)
+        layout_inputs.addWidget(self.servicio_label_value,1,1)
+        layout_inputs.addWidget(self.precio_label_value,2,1)
+        layout_inputs.addWidget(self.edit_fecha_button,0,2)
+        layout_inputs.addWidget(self.edit_servei_button,1,2)
+        layout_inputs.addWidget(self.edit_preu_button,2,2)
+        layout_inputs.addWidget(self.accept_fecha_button,0,2)
+        layout_inputs.addWidget(self.accept_servei_button,1,2)
+        layout_inputs.addWidget(self.accept_preu_button,2,2)
+        layout_inputs.setColumnStretch(0,3)
+        layout_inputs.setColumnStretch(1,3)
+        layout_inputs.setColumnStretch(2,3)
+
+
+
+        create_button = QPushButton(self)
+        create_button.setText('Afegir nou servei')
+        create_button.setStyleSheet(estiloBoton)
+        create_button.clicked.connect(self.mostrar_creacion)
+
+
+        svg_renderer = QSvgRenderer('crear-svg.svg')
+        svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        iconCrear = QIcon(svg_pixmap)
+
+        create_button.setIcon(iconCrear)
+        create_button.setIconSize(svg_pixmap.size())
+        create_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        close_button = QPushButton(self)
+        close_button.setText('Tancar finestra')
+        close_button.setStyleSheet(estiloBoton)
+        close_button.clicked.connect(self.close)
+
+
+        svg_renderer = QSvgRenderer('cross-svg.svg')
+        svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        iconClose = QIcon(svg_pixmap)
+
+        close_button.setIcon(iconClose)
+        close_button.setIconSize(svg_pixmap.size())
+        close_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        drop_button = QPushButton(self)
+        drop_button.setText('Eliminar servei')
+        drop_button.clicked.connect(self.eliminar_servei)
+        drop_button.setIcon(icon_drop)
+        drop_button.setIconSize(svg_pixmap_drop.size())
+        drop_button.setStyleSheet(estiloBoton) 
+        drop_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        layoutBotones = QGridLayout()
+        layoutBotones.addWidget(create_button,0,0)
+        layoutBotones.addWidget(close_button,0,1)
+        layoutBotones.addWidget(drop_button,0,2)
+        layoutBotones.setColumnStretch(0,3)
+        layoutBotones.setColumnStretch(1,3)
+        layoutBotones.setColumnStretch(2,3)
+
+
+
+        layout_fichaEdicionServicio.addWidget(label,0,0)
+        layout_fichaEdicionServicio.addLayout(layout_inputs,1,0)
+        layout_fichaEdicionServicio.addLayout(layoutBotones,2,0)
+        layout_fichaEdicionServicio.setRowStretch(0,1)
+        layout_fichaEdicionServicio.setRowStretch(1,7)
+        layout_fichaEdicionServicio.setRowStretch(2,2)
+
+    def mostrar_creacion(self):
+        self.estructuraEdicionInferior.hide()
+        self.estructuraCreacionInferior.show()
+
+    def on_servicio_click(self, row, column):
+        self.id_servicio = self.tablaClientes.item(row, 3).text()
+        fecha = self.tablaClientes.item(row, 0).text()
+        servei = self.tablaClientes.item(row, 1).text()
+        preu = self.tablaClientes.item(row, 2).text()
+        self.fecha_label_value.setText(fecha)
+        self.servicio_label_value.setText(servei)
+        self.precio_label_value.setText(preu)
+        self.hide_edit_servei()
+        self.estructuraCreacionInferior.hide()
+        self.estructuraEdicionInferior.show()
+
+    def editar_servei(self):
+        self.servicio_label_value.hide()
+        self.edit_servei_button.hide()
+        self.inputServeiEdicion.setText(self.servicio_label_value.text())
+        self.inputServeiEdicion.show()
+        self.accept_servei_button.show()
+
+    def editar_fecha(self):
+        self.fecha_label_value.hide()
+        self.edit_fecha_button.hide()
+        self.inputFechaEdicion.setText(self.fecha_label_value.text())
+        self.inputFechaEdicion.show()
+        self.accept_fecha_button.show()
+    
+    def editar_preu(self):
+        self.precio_label_value.hide()
+        self.edit_preu_button.hide()
+        texto_editado = self.precio_label_value.text()[:-1]
+        texto_editado = texto_editado.replace('.', ',')
+        self.inputPreuEdicion.setText(texto_editado)
+        self.inputPreuEdicion.show()
+        self.accept_preu_button.show()
+
+
+    def aceptar_servei(self):
+        servei = self.inputServeiEdicion.text()
+        if len(servei.strip()) == 0:
+            ventana_error = VentanaError("El servei no pot estar buit", self)
+            ventana_error.exec()
+            return
+
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()
+
+        try:
+            
+            update_query = '''
+                UPDATE Serveis
+                SET Servei = ?
+                WHERE Id = ?;
+            '''
+            
+            # Ejecutar la query con los parámetros
+            cursor.execute(update_query, (servei, self.id_servicio))
+            
+            # Confirmar los cambios
+            conn.commit()
+
+            self.servicio_label_value.setText(servei)
+
+            self.cargar_servicios()
+
+            
+
+            self.edit_servei_button.show()
+            self.servicio_label_value.show()
+            self.inputServeiEdicion.hide()
+            self.accept_servei_button.hide()
+
+
+
+            
+        except sqlite3.Error as e:
+            ventana_error = VentanaError("Alguna cosa no tenia que haber pasat, parla amb Martí sobre aquest error", self)
+            ventana_error.exec()
+            print(f"Error al actualizar el cliente: {e}")
+            
+        finally:
+            conn.close()
+        
+        
+
+    def aceptar_fecha(self):
+        fecha = self.inputFechaEdicion.text().strip()
+        patron = r"^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\d{4}$"
+    
+        if not re.match(patron, fecha):
+            ventana_error = VentanaError("La data no te un format valid", self)
+            ventana_error.exec()
+            return
+
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()            
+        try:
+            
+            update_query = '''
+                UPDATE Serveis
+                SET Fecha = ?
+                WHERE Id = ?;
+            '''
+            
+            # Ejecutar la query con los parámetros
+            cursor.execute(update_query, (fecha, self.id_servicio))
+            
+            # Confirmar los cambios
+            conn.commit()
+
+            self.fecha_label_value.setText(fecha)
+
+            self.cargar_servicios()
+
+            
+
+            self.edit_fecha_button.show()
+            self.fecha_label_value.show()
+            self.inputFechaEdicion.hide()
+            self.accept_fecha_button.hide()
+
+
+
+            
+        except sqlite3.Error as e:
+            ventana_error = VentanaError("Alguna cosa no tenia que haber pasat, parla amb Martí sobre aquest error", self)
+            ventana_error.exec()
+            print(f"Error al actualizar el cliente: {e}")
+            
+        finally:
+            conn.close()
+    
+    def aceptar_preu(self):
+        preu = self.inputPreuEdicion.text().strip()
+        preu = preu.replace(",", ".")
+        preuMostrar = self.inputPreuEdicion.text().strip()
+        preuMostrar = f'{preuMostrar}€'
+
+        try:
+            # Intentar convertir el valor a float
+            preu = float(preu)
+        except ValueError:
+            # Si no es un número válido, devuelve False o un mensaje de error
+            ventana_error = VentanaError("El preu només accepta numeros i no pot estar buit", self)
+            ventana_error.exec()
+            return
+        conn = sqlite3.connect('data.db')
+        cursor = conn.cursor()            
+        try:
+            
+            update_query = '''
+                UPDATE Serveis
+                SET Preu = ?
+                WHERE Id = ?;
+            '''
+            
+            # Ejecutar la query con los parámetros
+            cursor.execute(update_query, (preu, self.id_servicio))
+            
+            # Confirmar los cambios
+            conn.commit()
+
+            self.precio_label_value.setText(preuMostrar)
+
+            self.cargar_servicios()
+
+
+            self.edit_preu_button.show()
+            self.precio_label_value.show()
+            self.inputPreuEdicion.hide()
+            self.accept_preu_button.hide()
+
+
+
+            
+        except sqlite3.Error as e:
+            ventana_error = VentanaError("Alguna cosa no tenia que haber pasat, parla amb Martí sobre aquest error", self)
+            ventana_error.exec()
+            print(f"Error al actualizar el cliente: {e}")
+            
+        finally:
+            conn.close()
+        
+    
+    def eliminar_servei(self):
+        dialogo = DialogoConfirmacion(self, "servei")
+        if dialogo.exec() == QDialog.DialogCode.Accepted:
+            try:
+                conn = sqlite3.connect('data.db')  # Conectar a la base de datos
+                cursor = conn.cursor()
+
+                # Supongamos que `self.id_cliente` contiene el ID del cliente a eliminar
+                delete_query = 'DELETE FROM Serveis WHERE Id = ?'
+                cursor.execute(delete_query, (self.id_servicio,))
+
+                # Confirmar cambios en la base de datos
+                conn.commit()
+
+                self.cargar_servicios()
+
+                self.mostrar_creacion()
+
+
+
+            except sqlite3.Error as e:
+                print(f"Error al eliminar el cliente: {e}")
+
+            finally:
+                conn.close()
+
+    def hide_edit_servei(self):
+        self.fecha_label_value.show()
+        self.inputFechaEdicion.hide()
+        self.edit_fecha_button.show()
+        self.accept_fecha_button.hide()
+        self.servicio_label_value.show()
+        self.inputServeiEdicion.hide()
+        self.edit_servei_button.show()
+        self.accept_servei_button.hide()
+        self.precio_label_value.show()
+        self.inputPreuEdicion.hide()
+        self.edit_preu_button.show()
+        self.accept_preu_button.hide()
+
+
+
+
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -208,11 +1219,10 @@ class MainWindow(QMainWindow):
 
     def generar_contenido(self):
         self.setStyleSheet("background-color: white;")
-        self.background_label = QLabel(self)
-        pixmap = QPixmap("icono.png")  # Reemplaza con la ruta de tu imagen de fondo
-        self.background_label.setPixmap(pixmap)
-        self.background_label.setScaledContents(True)  # Escala la imagen al tamaño del label
-        self.background_label.setGeometry(300, 40, 800, 400)
+        self.imagen_fondo_label = QLabel(self)
+        pixmap = QPixmap('icono.png')  # Cargar la imagen
+        self.imagen_fondo_label.setPixmap(pixmap)
+        self.imagen_fondo_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.estructuraExterna()
 
     def estructuraExterna(self):
@@ -221,6 +1231,7 @@ class MainWindow(QMainWindow):
         self.layoutFondo = QGridLayout()
        
         self.layoutFondo.addWidget(QLabel(), 0, 0)
+        self.layoutFondo.addWidget(self.imagen_fondo_label, 0, 1)
         self.layoutFondo.addLayout(self.contenido_central, 0, 1)
         self.layoutFondo.addWidget(QLabel(), 0, 2)
         self.layoutFondo.setColumnStretch(0, 1)
@@ -328,6 +1339,9 @@ class MainWindow(QMainWindow):
         painter.end()
         icon = QIcon(svg_pixmap)
 
+        
+
+
         self.no_data_client.setIcon(icon)
         self.no_data_client.setIconSize(svg_pixmap.size())
         self.no_data_client.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -354,6 +1368,7 @@ class MainWindow(QMainWindow):
                 background: transparent;
                 border: 1px solid #d3d3d3;
                 border-radius: 10px;
+                
             }
             QHeaderView::section {
                 background-color: rgba(255, 165, 0, 100);
@@ -592,9 +1607,9 @@ class MainWindow(QMainWindow):
         painter = QPainter(svg_pixmap)
         svg_renderer.render(painter)
         painter.end()
-        icon = QIcon(svg_pixmap)
+        self.iconCrear = QIcon(svg_pixmap)
 
-        create_button.setIcon(icon)
+        create_button.setIcon(self.iconCrear)
         create_button.setIconSize(svg_pixmap.size())
         create_button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
@@ -1139,6 +2154,7 @@ class MainWindow(QMainWindow):
     def crear_usuario(self):
         self.no_click.hide()
         self.ficha_usuario.hide()
+        self.reiniciarInputs()
         #valores inputs a 0
         self.ficha_creacionUsuario.show()
 
@@ -1399,7 +2415,10 @@ class MainWindow(QMainWindow):
                 conn.close()
 
     def servicios_usuario(self):
-        pass
+        ventana_servicios = VentanaServicios(self)
+        ventana_servicios.show()
+        
+        
     
     def hide_layout(self,layout):
         for i in range(layout.count()):
@@ -1563,15 +2582,19 @@ class MainWindow(QMainWindow):
 
         nom_label = QLabel("Nom:")
         nom_label.setStyleSheet(label_style)
+        nom_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         cognoms_label = QLabel("Cognoms:")
         cognoms_label.setStyleSheet(label_style)
+        cognoms_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         color_label = QLabel("Color:")
         color_label.setStyleSheet(label_style)
+        color_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         telefon_label = QLabel("Telèfon:")
         telefon_label.setStyleSheet(label_style)
+        telefon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         
 
@@ -1602,15 +2625,60 @@ class MainWindow(QMainWindow):
         layout_datosUsuario.setColumnStretch(0,5)
         layout_datosUsuario.setColumnStretch(1,5)
 
+        layout_eleccion = QGridLayout()
+        self.boto_Creacionou = QPushButton("Client nou")
+        self.boto_Creacioantic = QPushButton("Client antic")
+
+        self.boto_Creacionou.setStyleSheet(estiloBoton)
+
+        self.boto_Creacioantic.setStyleSheet(estiloBoton)
+
+        self.boto_Creacioantic.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.boto_Creacionou.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.boto_Creacioantic.clicked.connect(self.clientCreacio_antic_click)
+        self.boto_Creacionou.clicked.connect(self.clientCreacio_nou_click)
+
+
+        layout_eleccion.addWidget(self.boto_Creacioantic,0,0)
+        layout_eleccion.addWidget(self.boto_Creacionou,0,1)
+
+        layout_tipus_client = QGridLayout()
+        label_tipus = QLabel("Tipus de client:")
+        label_tipus.setStyleSheet(label_style)
+        layout_tipus_client.addWidget(label_tipus, 0, 0)
+
+        layout_tipus_client.addLayout(layout_eleccion, 1, 0)
+        layout_tipus_client.setRowStretch(0, 5)  # Primera fila 20%
+        layout_tipus_client.setRowStretch(1, 5)
+
+        pack_informacio_usuari = QGridLayout()
+        pack_informacio_usuari.addLayout(layout_datosUsuario,0,0)
+        pack_informacio_usuari.addLayout(layout_tipus_client,1,0)
+        pack_informacio_usuari.setRowStretch(0,7)
+        pack_informacio_usuari.setRowStretch(1,3)
+
         aceptar_btn = QPushButton('Crear')
+        svg_pixmap = QPixmap(44, 44)  # Elige el tamaño que quieras para tu ícono
+        aceptar_btn.setIcon(self.iconCrear)
+        aceptar_btn.setIconSize(svg_pixmap.size())
         aceptar_btn.setStyleSheet(estiloBoton)
         aceptar_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        #aceptar_btn.clicked.connect(self.aceptar)
+        aceptar_btn.clicked.connect(self.aceptarCreacion)
 
         cancelar_btn = QPushButton('Cancelar')
+        svg_renderer = QSvgRenderer('cross-svg.svg')
+        svg_pixmap = QPixmap(44, 44)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        icon = QIcon(svg_pixmap)
+
+        cancelar_btn.setIcon(icon)
+        cancelar_btn.setIconSize(svg_pixmap.size())
         cancelar_btn.setStyleSheet(estiloBoton)
         cancelar_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        #cancelar_btn.clicked.connect(self.rechazar)
+        cancelar_btn.clicked.connect(self.rechazar_creacion)
 
         layout_abajo.addWidget(aceptar_btn,0,0)
         layout_abajo.addWidget(cancelar_btn,0,1)
@@ -1619,20 +2687,117 @@ class MainWindow(QMainWindow):
 
 
 
+
         layout_fichaCreacionsuario.addWidget(label,0,0)
-        layout_fichaCreacionsuario.addLayout(layout_datosUsuario,1,0)
-        layout_fichaCreacionsuario.addLayout(layout_abajo,2,0)
+        layout_fichaCreacionsuario.addLayout(pack_informacio_usuari,1,0)
+        label_sin_bordes = QLabel("")
+        label_sin_bordes.setStyleSheet("border: none;") 
+        layout_fichaCreacionsuario.addWidget(label_sin_bordes, 2, 0)
+        layout_fichaCreacionsuario.addLayout(layout_abajo,3,0)
 
 
         layout_fichaCreacionsuario.setRowStretch(0,2)
-        layout_fichaCreacionsuario.setRowStretch(1,6)
-        layout_fichaCreacionsuario.setRowStretch(2,2)
+        layout_fichaCreacionsuario.setRowStretch(1,14)
+        layout_fichaCreacionsuario.setRowStretch(2,1)
+        layout_fichaCreacionsuario.setRowStretch(3,3)
+    
+    def aceptarCreacion(self):
+        nombre = self.inputNombreCreacion.text()
+        cognoms = self.inputApellidosCreacion.text()
+        color = self.inputColorCreacion.text()
+        telefon = self.inputTelefonoCreacion.text()
+
+        if len(nombre.strip()) == 0:
+            ventana_error = VentanaError("El nom no pot estar buit", self)
+            ventana_error.exec()
+            return
+        if ' ' in nombre:
+            ventana_error = VentanaError("Elimina els espais del nom", self)  # Ventana de error si el nombre tiene espacios
+            ventana_error.exec()
+            return
+        telefono = telefon.strip()  # Elimina los espacios iniciales y finales
+        telefono = telefono.replace(" ", "")
+        for caracter in telefono:
+            if not caracter.isdigit():
+                ventana_error = VentanaError("El telefon nomes pot contindre numeros", self)
+                ventana_error.exec()
+                return 
+
+        if self.boto_Creacioantic.icon().cacheKey() !=0:
+            client_antic=1
+        elif self.boto_Creacionou.icon().cacheKey() !=0:
+            client_antic=0
+        else:
+            client_antic= None
+
+        try:
+            # Conectar a la base de datos
+            conn = sqlite3.connect('data.db')
+            cursor = conn.cursor()
+            
+            # Query de inserción
+            insert_query = '''
+                INSERT INTO Client (Nom, Cognoms, Telefon, Client_antic, Color)
+                VALUES (?, ?, ?, ?, ?);
+            '''
+            
+            # Ejecutar la query con los parámetros
+            cursor.execute(insert_query, (nombre, cognoms, telefono, client_antic, color))
+            
+            # Confirmar los cambios
+            conn.commit()
+            
+            self.barraBusqueda.setText("")
+            self.buscar_clientes("")
+
+            self.on_cliente_click(0,0)
+
+
+
+            print("El cliente ha sido insertado con éxito.")
+        
+        except sqlite3.Error as e:
+            print(f"Error al insertar el cliente: {e}")
+            
+        finally:
+            # Cerrar la conexión
+            conn.close()
+            
+            print("introduciendo datos")
+
+
+    def clientCreacio_antic_click(self):
+        if self.boto_Creacioantic.icon().cacheKey()!= 0:
+            self.boto_Creacioantic.setIcon(QIcon())
+
+        else:
+            self.boto_Creacionou.setIcon(QIcon())
+            self.boto_Creacioantic.setIcon(self.icon_check)
 
         
 
+    def clientCreacio_nou_click(self):
+        if self.boto_Creacionou.icon().cacheKey() != 0:
+            self.boto_Creacionou.setIcon(QIcon())
+
+        else:
+            self.boto_Creacioantic.setIcon(QIcon())
+            self.boto_Creacionou.setIcon(self.icon_check)
 
 
+    def reiniciarInputs(self):
+        self.inputNombreCreacion.setText("")
+        self.inputApellidosCreacion.setText("")
+        self.inputColorCreacion.setText("")
+        self.inputTelefonoCreacion.setText("")
+        self.boto_Creacioantic.setIcon(QIcon())
+        self.boto_Creacionou.setIcon(QIcon())
 
+    def rechazar_creacion(self):
+        self.ficha_creacionUsuario.hide()
+        self.ficha_usuario.hide()  
+        self.no_click.show()
+      
 
 
 
