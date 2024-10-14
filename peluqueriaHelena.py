@@ -24,7 +24,7 @@ class DialogoConfirmacion(QDialog):
 
         # Etiqueta con el mensaje
         icono = QLabel()
-        svg_renderer = QSvgRenderer('error-svg.svg')
+        svg_renderer = QSvgRenderer('assets/error-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -165,7 +165,7 @@ class VentanaError(QDialog):
 
 
 
-        svg_renderer = QSvgRenderer('error-svg.svg')
+        svg_renderer = QSvgRenderer('assets/error-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -231,7 +231,7 @@ class VentanaServicios(QMainWindow):
     def generar_contenido(self):
         self.setStyleSheet("background-color: white;")
         self.imagen_fondo_label = QLabel(self)
-        pixmap = QPixmap('icono.png')  # Cargar la imagen
+        pixmap = QPixmap('assets/icono.png')  # Cargar la imagen
         self.imagen_fondo_label.setPixmap(pixmap)
         self.imagen_fondo_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.estructuraExterna()
@@ -311,7 +311,7 @@ class VentanaServicios(QMainWindow):
                 font-weight: bold;
             }
         """)
-        svg_renderer = QSvgRenderer('information-svg.svg')
+        svg_renderer = QSvgRenderer('assets/information-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -367,7 +367,7 @@ class VentanaServicios(QMainWindow):
     
     def cargar_servicios(self):
         self.offset = 0
-        conn = sqlite3.connect('data.db')
+        conn = sqlite3.connect('data/data.db')
         cursor = conn.cursor()
         try:
             self.query = '''
@@ -419,7 +419,7 @@ class VentanaServicios(QMainWindow):
         if self.tablaClientes.verticalScrollBar().value() == self.tablaClientes.verticalScrollBar().maximum():
 
             self.offset += self.limit
-            conn = sqlite3.connect('data.db')
+            conn = sqlite3.connect('data/data.db')
             cursor = conn.cursor()
             self.params_list[-1] = f'{self.offset}'
             params = tuple(self.params_list)
@@ -555,7 +555,7 @@ class VentanaServicios(QMainWindow):
         create_button.clicked.connect(self.crear_servicio)
 
 
-        svg_renderer = QSvgRenderer('crear-svg.svg')
+        svg_renderer = QSvgRenderer('assets/crear-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -573,7 +573,7 @@ class VentanaServicios(QMainWindow):
         close_button.clicked.connect(self.close)
 
 
-        svg_renderer = QSvgRenderer('cross-svg.svg')
+        svg_renderer = QSvgRenderer('assets/cross-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -631,7 +631,7 @@ class VentanaServicios(QMainWindow):
 
         try:
             # Conectar a la base de datos
-            conn = sqlite3.connect('data.db')
+            conn = sqlite3.connect('data/data.db')
             cursor = conn.cursor()
             
             # Query de inserción para la tabla Serveis
@@ -722,7 +722,7 @@ class VentanaServicios(QMainWindow):
         
         """
 
-        svg_renderer_edit = QSvgRenderer('edit-svg.svg')
+        svg_renderer_edit = QSvgRenderer('assets/edit-svg.svg')
         svg_pixmap_edit = QPixmap(24, 24)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap_edit.fill(Qt.GlobalColor.transparent)
         painter_edit = QPainter(svg_pixmap_edit)
@@ -731,7 +731,7 @@ class VentanaServicios(QMainWindow):
 
         icon_edit = QIcon(svg_pixmap_edit)
 
-        svg_renderer = QSvgRenderer('tick-svg.svg')
+        svg_renderer = QSvgRenderer('assets/tick-svg.svg')
         svg_pixmap = QPixmap(24, 24)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -740,7 +740,7 @@ class VentanaServicios(QMainWindow):
 
         icon = QIcon(svg_pixmap)
 
-        svg_renderer_drop = QSvgRenderer('trash-svg.svg')
+        svg_renderer_drop = QSvgRenderer('assets/trash-svg.svg')
         svg_pixmap_drop = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap_drop.fill(Qt.GlobalColor.transparent)
         painter_drop = QPainter(svg_pixmap_drop)
@@ -889,7 +889,7 @@ class VentanaServicios(QMainWindow):
         create_button.clicked.connect(self.mostrar_creacion)
 
 
-        svg_renderer = QSvgRenderer('crear-svg.svg')
+        svg_renderer = QSvgRenderer('assets/crear-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -907,7 +907,7 @@ class VentanaServicios(QMainWindow):
         close_button.clicked.connect(self.close)
 
 
-        svg_renderer = QSvgRenderer('cross-svg.svg')
+        svg_renderer = QSvgRenderer('assets/cross-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -991,7 +991,7 @@ class VentanaServicios(QMainWindow):
             ventana_error.exec()
             return
 
-        conn = sqlite3.connect('data.db')
+        conn = sqlite3.connect('data/data.db')
         cursor = conn.cursor()
 
         try:
@@ -1041,7 +1041,7 @@ class VentanaServicios(QMainWindow):
             ventana_error.exec()
             return
 
-        conn = sqlite3.connect('data.db')
+        conn = sqlite3.connect('data/data.db')
         cursor = conn.cursor()            
         try:
             
@@ -1093,7 +1093,7 @@ class VentanaServicios(QMainWindow):
             ventana_error = VentanaError("El preu només accepta numeros i no pot estar buit", self)
             ventana_error.exec()
             return
-        conn = sqlite3.connect('data.db')
+        conn = sqlite3.connect('data/data.db')
         cursor = conn.cursor()            
         try:
             
@@ -1135,7 +1135,7 @@ class VentanaServicios(QMainWindow):
         dialogo = DialogoConfirmacion(self, "servei")
         if dialogo.exec() == QDialog.DialogCode.Accepted:
             try:
-                conn = sqlite3.connect('data.db')  # Conectar a la base de datos
+                conn = sqlite3.connect('data/data.db')  # Conectar a la base de datos
                 cursor = conn.cursor()
 
                 # Supongamos que `self.id_cliente` contiene el ID del cliente a eliminar
@@ -1220,7 +1220,7 @@ class MainWindow(QMainWindow):
     def generar_contenido(self):
         self.setStyleSheet("background-color: white;")
         self.imagen_fondo_label = QLabel(self)
-        pixmap = QPixmap('icono.png')  # Cargar la imagen
+        pixmap = QPixmap('assets/icono.png')  # Cargar la imagen
         self.imagen_fondo_label.setPixmap(pixmap)
         self.imagen_fondo_label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.estructuraExterna()
@@ -1319,7 +1319,7 @@ class MainWindow(QMainWindow):
             }
         """)
 
-        svg_renderer = QSvgRenderer('search-svg.svg')
+        svg_renderer = QSvgRenderer('assets/search-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -1331,7 +1331,7 @@ class MainWindow(QMainWindow):
         self.no_results.setIconSize(svg_pixmap.size())
         self.no_results.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
-        svg_renderer = QSvgRenderer('information-svg.svg')
+        svg_renderer = QSvgRenderer('assets/information-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -1391,7 +1391,7 @@ class MainWindow(QMainWindow):
 
     def load_data_clients(self):
         # Conectar a la base de datos
-        conn = sqlite3.connect('data.db')
+        conn = sqlite3.connect('data/data.db')
         cursor = conn.cursor()
 
         try:
@@ -1450,7 +1450,7 @@ class MainWindow(QMainWindow):
     def buscar_clientes(self, texto_buscado):
         # Conectar a la base de datos
         self.offset = 0
-        conn = sqlite3.connect('data.db')
+        conn = sqlite3.connect('data/data.db')
         cursor = conn.cursor()
         writed=True
 
@@ -1601,7 +1601,7 @@ class MainWindow(QMainWindow):
         create_button.clicked.connect(self.crear_usuario)
 
 
-        svg_renderer = QSvgRenderer('crear-svg.svg')
+        svg_renderer = QSvgRenderer('assets/crear-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -1640,7 +1640,7 @@ class MainWindow(QMainWindow):
         calculs_button.clicked.connect(self.calculs)
 
 
-        svg_renderer_calculs = QSvgRenderer('calculator-svg.svg')
+        svg_renderer_calculs = QSvgRenderer('assets/calculator-svg.svg')
         svg_pixmap_calculs = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap_calculs.fill(Qt.GlobalColor.transparent)
         painter_calculs = QPainter(svg_pixmap_calculs)
@@ -1674,7 +1674,7 @@ class MainWindow(QMainWindow):
             }
         """)
 
-        svg_renderer = QSvgRenderer('information-svg.svg')
+        svg_renderer = QSvgRenderer('assets/information-svg.svg')
         svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -1719,7 +1719,7 @@ class MainWindow(QMainWindow):
         
         #label.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding) 
         
-        svg_renderer_edit = QSvgRenderer('edit-svg.svg')
+        svg_renderer_edit = QSvgRenderer('assets/edit-svg.svg')
         svg_pixmap_edit = QPixmap(24, 24)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap_edit.fill(Qt.GlobalColor.transparent)
         painter_edit = QPainter(svg_pixmap_edit)
@@ -1889,7 +1889,7 @@ class MainWindow(QMainWindow):
         informacio_usuari.setColumnStretch(1, 4)  # Columna 1 ocupa el 40%
         informacio_usuari.setColumnStretch(2, 2)
 
-        svg_renderer = QSvgRenderer('tickConfirm-svg.svg')
+        svg_renderer = QSvgRenderer('assets/tickConfirm-svg.svg')
         svg_pixmap = QPixmap(34, 34)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -1964,7 +1964,7 @@ class MainWindow(QMainWindow):
 
         
 
-        svg_renderer_drop = QSvgRenderer('trash-svg.svg')
+        svg_renderer_drop = QSvgRenderer('assets/trash-svg.svg')
         svg_pixmap_drop = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap_drop.fill(Qt.GlobalColor.transparent)
         painter_drop = QPainter(svg_pixmap_drop)
@@ -1973,7 +1973,7 @@ class MainWindow(QMainWindow):
 
         icon_drop = QIcon(svg_pixmap_drop)
 
-        svg_renderer_services = QSvgRenderer('services-svg.svg')
+        svg_renderer_services = QSvgRenderer('assets/services-svg.svg')
         svg_pixmap_services = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap_services.fill(Qt.GlobalColor.transparent)
         painter_services = QPainter(svg_pixmap_services)
@@ -2080,7 +2080,7 @@ class MainWindow(QMainWindow):
                 font-size: 16px;  /* Tamaño de fuente */
             }
         """
-        svg_renderer = QSvgRenderer('tick-svg.svg')
+        svg_renderer = QSvgRenderer('assets/tick-svg.svg')
         svg_pixmap = QPixmap(24, 24)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -2179,7 +2179,7 @@ class MainWindow(QMainWindow):
             ventana_error = VentanaError("Elimina els espais del nom", self)  # Ventana de error si el nombre tiene espacios
             ventana_error.exec()
         else:
-            conn = sqlite3.connect('data.db')
+            conn = sqlite3.connect('data/data.db')
             cursor = conn.cursor()
 
             try:
@@ -2229,7 +2229,7 @@ class MainWindow(QMainWindow):
 
     def aceptar_apellido(self):
         apellidos = self.inputApellidos.text()
-        conn = sqlite3.connect('data.db')
+        conn = sqlite3.connect('data/data.db')
         cursor = conn.cursor()
 
         try:
@@ -2276,7 +2276,7 @@ class MainWindow(QMainWindow):
     
     def aceptar_color(self):
         color = self.inputColor.text()
-        conn = sqlite3.connect('data.db')
+        conn = sqlite3.connect('data/data.db')
         cursor = conn.cursor()
 
         try:
@@ -2329,7 +2329,7 @@ class MainWindow(QMainWindow):
                 ventana_error = VentanaError("El telefon nomes pot contindre numeros", self)
                 ventana_error.exec()
                 return 
-        conn = sqlite3.connect('data.db')
+        conn = sqlite3.connect('data/data.db')
         cursor = conn.cursor()
 
         try:
@@ -2392,7 +2392,7 @@ class MainWindow(QMainWindow):
         dialogo = DialogoConfirmacion(self)
         if dialogo.exec() == QDialog.DialogCode.Accepted:
             try:
-                conn = sqlite3.connect('data.db')  # Conectar a la base de datos
+                conn = sqlite3.connect('data/data.db')  # Conectar a la base de datos
                 cursor = conn.cursor()
 
                 # Supongamos que `self.id_cliente` contiene el ID del cliente a eliminar
@@ -2455,7 +2455,7 @@ class MainWindow(QMainWindow):
 
     
     def actualizar_cliente_tipo(self,client_antic):
-        conn = sqlite3.connect('data.db')  # Conectar a la base de datos
+        conn = sqlite3.connect('data/data.db')  # Conectar a la base de datos
         cursor = conn.cursor()
 
         try:
@@ -2493,7 +2493,7 @@ class MainWindow(QMainWindow):
         if self.tablaClientes.verticalScrollBar().value() == self.tablaClientes.verticalScrollBar().maximum():
 
             self.offset += self.limit
-            conn = sqlite3.connect('data.db')
+            conn = sqlite3.connect('data/data.db')
             cursor = conn.cursor()
             self.params_list[-1] = f'{self.offset}'
             params = tuple(self.params_list)
@@ -2666,7 +2666,7 @@ class MainWindow(QMainWindow):
         aceptar_btn.clicked.connect(self.aceptarCreacion)
 
         cancelar_btn = QPushButton('Cancelar')
-        svg_renderer = QSvgRenderer('cross-svg.svg')
+        svg_renderer = QSvgRenderer('assets/cross-svg.svg')
         svg_pixmap = QPixmap(44, 44)  # Elige el tamaño que quieras para tu ícono
         svg_pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(svg_pixmap)
@@ -2732,7 +2732,7 @@ class MainWindow(QMainWindow):
 
         try:
             # Conectar a la base de datos
-            conn = sqlite3.connect('data.db')
+            conn = sqlite3.connect('data/data.db')
             cursor = conn.cursor()
             
             # Query de inserción
