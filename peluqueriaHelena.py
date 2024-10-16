@@ -1,13 +1,18 @@
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QLineEdit, QTableWidget, 
     QTableWidgetItem, QPushButton, QWidget, QVBoxLayout, QGridLayout, QSizePolicy, 
-    QHeaderView, QScrollBar,QCheckBox, QMessageBox, QDialog, QDateEdit
+    QHeaderView, QScrollBar,QCheckBox, QMessageBox, QDialog, QDateEdit, QFrame, QFileDialog
 )
 from PyQt6.QtGui import QPixmap, QFont, QIcon, QPainter
 from PyQt6.QtCore import Qt,QDate
 from PyQt6.QtSvgWidgets import QSvgWidget
 from PyQt6.QtSvg import QSvgRenderer
-import sqlite3, sys, re
+from datetime import datetime
+import sqlite3, sys, re, shutil
+import openpyxl
+from openpyxl import Workbook
+from openpyxl.styles import Font,  PatternFill
+
 
 class DialogoConfirmacion(QDialog):
     def __init__(self, parent=None, mensajeClase= None):
@@ -221,7 +226,6 @@ class VentanaServicios(QMainWindow):
 
         # Configurar la ventana
         self.setWindowTitle("Serveis de "+ self.nombre)
-        self.setGeometry(100, 100, 1400, 800)
 
         self.generar_contenido()
         self.show()
@@ -242,7 +246,7 @@ class VentanaServicios(QMainWindow):
         self.layoutFondo = QGridLayout()
        
         self.layoutFondo.addWidget(QLabel(), 0, 0)
-        self.layoutFondo.addWidget(self.imagen_fondo_label, 0, 1)
+        self.layoutFondo.addWidget(self.imagen_fondo_label,0,1)
         self.layoutFondo.addLayout(self.contenido_central, 0, 1)
         self.layoutFondo.addWidget(QLabel(), 0, 2)
         self.layoutFondo.setColumnStretch(0, 1)
@@ -1213,7 +1217,6 @@ class MainWindow(QMainWindow):
         self.show()
 
     def inicializar_ui(self):
-        self.setGeometry(100, 100, 1400, 800)
         self.setWindowTitle("Helena Peluqueria")
         self.generar_contenido()
 
@@ -2161,7 +2164,8 @@ class MainWindow(QMainWindow):
         
     
     def calculs(self):
-        pass
+        ventana_calculos = VentanaCalculs(self)
+        ventana_calculos.show()
 
     def editar_nombre(self):
         self.edit_name_button.hide()
@@ -2797,6 +2801,683 @@ class MainWindow(QMainWindow):
         self.ficha_creacionUsuario.hide()
         self.ficha_usuario.hide()  
         self.no_click.show()
+
+class VentanaCalculs(QMainWindow):
+    def __init__(self,parent= None):
+        super().__init__(parent)
+
+
+        # Configurar la ventana
+        self.setWindowTitle("Càlculs")
+
+        self.generar_contenido()
+        self.show()
+
+    def generar_contenido(self):
+        estiloBoton = """ QPushButton{
+            font-size: 16px;
+            border: 1px solid black;
+            border-radius: 10px;
+        } 
+            
+        QPushButton:hover {
+            background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+            border: 2px solid #FFA500;  /* Borde naranja */
+            color: white;  /* Cambiar el color del texto a blanco */
+            /* Cambiar el cursor a una mano */
+        }"""
+
+        layoutFondo = QGridLayout()
+
+        # Crear un frame para el botón Tipo Cliente
+        frameTipoCliente = QFrame()
+        frameTipoCliente.setStyleSheet("padding: 10px; margin: 5px;")  # Padding y margen
+        botonTipoCliente = QPushButton('Tipus de clients')
+        svg_renderer = QSvgRenderer('assets/typeuser-svg.svg')
+        svg_pixmap = QPixmap(44, 44)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        icon = QIcon(svg_pixmap)
+
+        botonTipoCliente.setIcon(icon)
+        botonTipoCliente.setIconSize(svg_pixmap.size())
+        botonTipoCliente.setStyleSheet(estiloBoton)
+        botonTipoCliente.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        botonTipoCliente.clicked.connect(self.tipus_client_function)
+        frameTipoCliente.setLayout(QVBoxLayout())
+        frameTipoCliente.layout().addWidget(botonTipoCliente)
+        layoutFondo.addWidget(frameTipoCliente, 0, 0)
+
+        # Espaciador
+        layoutFondo.addWidget(QLabel(), 1, 0)
+
+        # Crear un frame para el botón Facturación
+        frameFacturacion = QFrame()
+        frameFacturacion.setStyleSheet("padding: 10px; margin: 5px;")  # Padding y margen
+        botonFacturacion = QPushButton('Facturació total')
+        svg_renderer = QSvgRenderer('assets/euro-svg.svg')
+        svg_pixmap = QPixmap(44, 44)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        icon = QIcon(svg_pixmap)
+
+        botonFacturacion.setIcon(icon)
+        botonFacturacion.setIconSize(svg_pixmap.size())
+        botonFacturacion.setStyleSheet(estiloBoton)
+        botonFacturacion.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        botonFacturacion.clicked.connect(self.generar_facturacio)
+        frameFacturacion.setLayout(QVBoxLayout())
+        frameFacturacion.layout().addWidget(botonFacturacion)
+        layoutFondo.addWidget(frameFacturacion, 2, 0)
+
+        # Espaciador
+        layoutFondo.addWidget(QLabel(), 3, 0)
+
+        # Crear un frame para el botón Fidelidad
+        frameFidelidad = QFrame()
+        frameFidelidad.setStyleSheet("padding: 10px; margin: 5px;")  # Padding y margen
+        botonFidelidad = QPushButton('Taula de fidelitat')
+        svg_renderer = QSvgRenderer('assets/heart-svg.svg')
+        svg_pixmap = QPixmap(44, 44)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        icon = QIcon(svg_pixmap)
+
+        botonFidelidad.setIcon(icon)
+        botonFidelidad.setIconSize(svg_pixmap.size())
+        botonFidelidad.setStyleSheet(estiloBoton)
+        botonFidelidad.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        frameFidelidad.setLayout(QVBoxLayout())
+        frameFidelidad.layout().addWidget(botonFidelidad)
+        layoutFondo.addWidget(frameFidelidad, 4, 0)
+
+        layoutFondo.setRowStretch(0, 2)
+        layoutFondo.setRowStretch(1, 1)
+        layoutFondo.setRowStretch(2, 2)
+        layoutFondo.setRowStretch(3, 1)
+        layoutFondo.setRowStretch(4, 2)
+
+        layoutCentral = QGridLayout()
+        layoutCentral.addWidget(QLabel(), 0, 0)
+        layoutCentral.addLayout(layoutFondo, 0, 1)
+        layoutCentral.addWidget(QLabel(), 0, 2)
+        layoutCentral.setColumnStretch(0, 2)
+        layoutCentral.setColumnStretch(1, 6)
+        layoutCentral.setColumnStretch(2, 2)
+
+        contenedor_widget = QWidget()
+        contenedor_widget.setLayout(layoutCentral)
+        self.setCentralWidget(contenedor_widget)
+
+
+    def tipus_client_function(self):
+        try:
+            # Conectar a la base de datos
+            conn = sqlite3.connect('data/data.db')
+            cursor = conn.cursor()
+
+            # Seleccionar el campo 'tipus_client' de todos los clientes
+            cursor.execute('SELECT Client_antic FROM Client')
+            
+            # Obtener todos los resultados
+            resultados = cursor.fetchall()
+
+            # Guardar los valores de 'tipus_client' en una lista
+            tipus_client_list = [fila[0] for fila in resultados]
+
+            # Cerrar la conexión a la base de datos
+            conn.close()
+            cantidad_total = len(tipus_client_list)
+        
+
+
+            if cantidad_total > 1:
+                cantidad_antiguos = tipus_client_list.count(1)
+                cantidad_nuevos = tipus_client_list.count(0)
+                cantidad_noDefinidos = tipus_client_list.count(None)
+                perc_antiguos = round((cantidad_antiguos / cantidad_total) * 100)
+                perc_nuevos = round((cantidad_nuevos / cantidad_total) * 100)
+                perc_noDefinidos = round((cantidad_noDefinidos / cantidad_total) * 100)
+                
+                ventana_tipoCliente = VentanaTipusClients(str(perc_antiguos),str(perc_noDefinidos),str(perc_nuevos),str(cantidad_antiguos),str(cantidad_nuevos),str(cantidad_noDefinidos),str(cantidad_total),self)
+                ventana_tipoCliente.show()
+                
+
+
+            else:
+                ventana_error = VentanaError("No hi han suficients clients", self)
+                ventana_error.exec()
+
+            # Devolver la lista de tipus_client
+
+        except sqlite3.Error as e:
+            # Manejar cualquier error que ocurra durante la operación con la base de datos
+            print(f"Ha ocurrido un error con la base de datos: {e}")
+
+        except Exception as e:
+            # Capturar cualquier otro tipo de excepción inesperada
+            print(f"Ha ocurrido un error inesperado: {e}")
+        
+    def generar_facturacio(self):
+        ventana_facturacio = VentanaFacturacio(self)
+        ventana_facturacio.show()
+
+        
+
+
+    def click_generar(self):
+        try:
+            # Convertir ambas fechas a objetos datetime para poder compararlas
+            fecha1 = datetime.strptime(self.input1_content, "%d/%m/%Y")
+            fecha2 = datetime.strptime(self.input2_content, "%d/%m/%Y")
+            
+
+            # Comparar si la primera fecha es menor que la segunda
+            if fecha1 < fecha2:
+                self.cargar_datos()
+            else:
+                ventana_error = VentanaError("La primera data ha de ser anterior a la segona", self)
+                ventana_error.exec()
+
+        except ValueError:
+            # Capturar el error si los inputs no son fechas válidas
+            ventana_error = VentanaError("La data no té un format vàlid", self)
+            ventana_error.exec()        
+
+    def cargar_datos(self):
+        try:
+            # Conectar a la base de datos
+            conn = sqlite3.connect('data/data.db')
+            cursor = conn.cursor()
+            #print(fecha1)
+            #print(fecha2)
+
+            # Seleccionar los campos 'Servei', 'Fecha' y 'Preu' de la tabla 'Serveis'
+            cursor.execute('''
+            SELECT Servei, Fecha, Preu 
+            FROM Serveis 
+            WHERE Fecha BETWEEN ? AND ?
+        ''', (self.input1_content, self.input2_content))
+            
+            # Obtener todos los resultados
+            resultados = cursor.fetchall()
+            if not resultados:
+                ventana_error = VentanaError("No hi han registres de serveis en aquesta data", self)
+                ventana_error.exec()
+                return 
+            
+            # Guardar los datos en una lista o hacer algo con ellos
+            servicios = []
+            for row in resultados:
+                # Cada fila contiene ('Servei', 'Fecha', 'Preu')
+                servicio = {
+                    'Servei': row[0],
+                    'Fecha': row[1],
+                    'Preu': row[2]
+                }
+                servicios.append(servicio)
+
+            # Devolver o procesar los datos
+            self.construirExcel(servicios)
+
+        except sqlite3.Error as e:
+            print(f"Error al acceder a la base de datos: {e}")
+
+        finally:
+            # Cerrar la conexión a la base de datos
+            if conn:
+                conn.close()
+
+    def construirExcel(self, servicios, nombre_archivo='servicios.xlsx'):
+        # Crear un nuevo libro de trabajo de Excel
+        wb = Workbook()
+        ws = wb.active
+
+        # Añadir cabeceras para la primera parte del Excel
+
+        font_bold = Font(bold=True)
+        fill_orange = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
+
+        headers = ["Data", "Servei", "Preu", "Total"]
+        ws.append(headers)
+
+        # Aplicar el formato a las cabeceras (fondo naranja y negrita)
+        for col in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col)
+            cell.font = font_bold
+            cell.fill = fill_orange
+
+        total_precio = 0  # Inicializar el total de precios
+
+        # Añadir los datos de los servicios
+        for servicio in servicios:
+            fecha = servicio['Fecha']
+            servei = servicio['Servei']
+            preu = servicio['Preu']
+            total_precio += preu
+            preu_simbolo = f"{preu} €"
+            # Añadir una nueva fila con la fecha, el servicio y el precio
+            ws.append([fecha, servei, preu_simbolo, ""])
+
+        # Colocar el total en la cuarta columna, en negrita
+        total_cell = ws.cell(row=ws.max_row + 1, column=4, value=f"{total_precio} €")
+        total_label_cell = ws.cell(row=ws.max_row, column=3, value="Total")
+        total_label_cell.font = Font(bold=True)
+        total_cell.font = Font(bold=True)
+
+        ws.column_dimensions['A'].width = 15  # Ajustar el ancho de la columna A (Fecha)
+        ws.column_dimensions['B'].width = 30  # Ajustar el ancho de la columna B (Servei)
+        ws.column_dimensions['C'].width = 15
+        ws.column_dimensions['D'].width = 15
+        
+
+        # Obtener los datos de "Serveis oferits" y contar los servicios coincidentes
+        
+
+        # Guardar el archivo Excel con el nombre especificado
+        wb.save(nombre_archivo)
+        print(f"Archivo Excel '{nombre_archivo}' creado con éxito.")
+
+        
+
+class VentanaTipusClients(QMainWindow):
+    def __init__(self, perc_antiguos,perc_noDefinidos, perc_nuevos, cantidad_antiguos, cantidad_nuevos,cantidad_noDefinidos, cantidad_total, parent=None):
+        super().__init__(parent)
+
+
+        # Configurar la ventana
+        self.setWindowTitle("Tipus de clients")
+
+        self.generar_contenido(perc_antiguos,perc_noDefinidos,perc_nuevos,cantidad_antiguos,cantidad_nuevos,cantidad_noDefinidos,cantidad_total)
+        self.parent_window = parent
+        self.parent_window.close()
+        self.show()
+    def generar_contenido(self,perc_antiguos,perc_noDefinidos,perc_nuevos,cantidad_antiguos,cantidad_nuevos,cantidad_noDefinidos,cantidad_total):
+        # Estilo para los labels
+        label_style = """
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+        """
+
+        # Estilo para los frames
+        frame_style = """
+            border: 2px solid rgba(255, 165, 0, 100);  /* Borde naranja */
+            border-radius: 5px;         /* Bordes redondeados opcional */
+            padding: 10px;               /* Espaciado interno opcional */
+        """
+
+        layout_superior = QGridLayout()
+        label_clients_antics = QLabel(perc_antiguos+'% Clients Antics')
+        label_clients_antics.setStyleSheet(label_style)  # Aplicar estilo al QLabel
+        layout_superior.addWidget(label_clients_antics, 0, 0)
+
+        label_clients_nous = QLabel(perc_nuevos+'% Clients Nous')
+        label_clients_nous.setStyleSheet(label_style)  # Aplicar estilo al QLabel
+        layout_superior.addWidget(label_clients_nous, 1, 0)
+
+        label_clients_noDefinidos = QLabel(perc_noDefinidos+'% Clients No Definits')
+        label_clients_noDefinidos.setStyleSheet(label_style)  # Aplicar estilo al QLabel
+        layout_superior.addWidget(label_clients_noDefinidos, 2, 0)
+
+        # Crear un frame para el layout superior
+        frame_superior = QFrame()
+        frame_superior.setLayout(layout_superior)
+        frame_superior.setStyleSheet(frame_style)  # Aplicar estilo al frame
+
+        # Establecer márgenes y espaciado para el layout superior
+        layout_superior.setContentsMargins(10, 10, 10, 10)  # (izquierda, arriba, derecha, abajo)
+        layout_superior.setSpacing(5)  # Espaciado entre widgets
+
+        layout_central = QGridLayout()
+        label_clients_antics_count = QLabel(cantidad_antiguos+' Clients Antics')
+        label_clients_antics_count.setStyleSheet(label_style)  # Aplicar estilo al QLabel
+        layout_central.addWidget(label_clients_antics_count, 0, 0)
+
+        label_clients_nous_count = QLabel(cantidad_nuevos+' Clients Nous')
+        label_clients_nous_count.setStyleSheet(label_style)  # Aplicar estilo al QLabel
+        layout_central.addWidget(label_clients_nous_count, 1, 0)
+
+        label_clients_noDefinits = QLabel(cantidad_noDefinidos+' Clients No Definits')
+        label_clients_noDefinits.setStyleSheet(label_style)  # Aplicar estilo al QLabel
+        layout_central.addWidget(label_clients_noDefinits, 2, 0)
+
+        # Crear un frame para el layout central
+        frame_central = QFrame()
+        frame_central.setLayout(layout_central)
+        frame_central.setStyleSheet(frame_style)  # Aplicar estilo al frame
+
+        # Establecer márgenes y espaciado para el layout central
+        layout_central.setContentsMargins(10, 10, 10, 10)  # (izquierda, arriba, derecha, abajo)
+        layout_central.setSpacing(5)  # Espaciado entre widgets
+
+        layout_inferior = QGridLayout()
+        label_clients_totals = QLabel(cantidad_total+' Clients Totals')
+        label_clients_totals.setStyleSheet(label_style)  # Aplicar estilo al QLabel
+        layout_inferior.addWidget(label_clients_totals, 0, 0)
+
+        # Crear un frame para el layout inferior
+        frame_inferior = QFrame()
+        frame_inferior.setLayout(layout_inferior)
+        frame_inferior.setStyleSheet(frame_style)  # Aplicar estilo al frame
+
+        # Establecer márgenes y espaciado para el layout inferior
+        layout_inferior.setContentsMargins(10, 10, 10, 10)  # (izquierda, arriba, derecha, abajo)
+        layout_inferior.setSpacing(5)  # Espaciado entre widgets
+
+        layoutCentral = QGridLayout()
+        layoutCentral.addWidget(frame_superior, 0, 0)
+        layoutCentral.addWidget(frame_central, 1, 0)
+        layoutCentral.addWidget(frame_inferior, 2, 0)
+
+        # Establecer márgenes y espaciado para el layout principal
+        layoutCentral.setContentsMargins(20, 20, 20, 20)  # (izquierda, arriba, derecha, abajo)
+        layoutCentral.setSpacing(10)  # Espaciado entre frames
+
+        contenedor_widget = QWidget()
+        contenedor_widget.setLayout(layoutCentral)
+        self.setCentralWidget(contenedor_widget)
+
+class VentanaFacturacio(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Facturació")
+
+        self.generar_contenido()
+        self.parent_window = parent
+        self.parent_window.close()
+        self.show()
+
+    def generar_contenido(self):
+        label_style = """
+            font-size: 16px;
+            font-weight: bold;
+            border: none;
+        """
+
+        # Estilo para los frames
+        frame_style = """
+            QFrame {
+                border: 2px solid orange;
+                border-radius: 5px;
+                padding: 10px;
+                background-color: #fff8e1;  /* Fondo claro opcional */
+            }
+        """
+        
+        # Estilos para los inputs
+        estilosInput = """
+            QLineEdit {
+                border: 2px solid orange;
+                border-radius: 15px;
+                padding: 5px;
+                font-size: 16px;
+            }
+        """
+        
+        # Estilos para los botones
+        estilosBoton = """
+            QPushButton {
+                font-size: 16px;
+                border: 1px solid black;
+                border-radius: 10px;
+                padding: 10px 20px;
+            }
+            
+            QPushButton:hover {
+                background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+                border: 2px solid #FFA500;  /* Borde naranja */
+                color: white;  /* Cambiar el color del texto a blanco */
+            }
+        """
+
+        # Crear labels
+        label_desde = QLabel("Desde")
+        label_desde.setStyleSheet(label_style)
+
+        label_fins = QLabel("Fins a")
+        label_fins.setStyleSheet(label_style)
+
+        # Crear inputs
+        self.input1 = QLineEdit(self)
+        self.input1.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.input1.setStyleSheet(estilosInput)
+
+        self.input2 = QLineEdit(self)
+        self.input2.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.input2.setStyleSheet(estilosInput)
+
+        # Crear botones
+        generar_btn = QPushButton('Generar facturació')
+        generar_btn.setStyleSheet(estilosBoton)
+        generar_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        generar_btn.clicked.connect(self.click_generar)
+
+
+        self.descargar_btn = QPushButton('Baixar excel de facturació')
+        self.descargar_btn.setStyleSheet(estilosBoton)
+        self.descargar_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        # Añadir icono al botón de descarga
+        svg_renderer = QSvgRenderer('assets/download-svg.svg')
+        svg_pixmap = QPixmap(44, 44)  # Tamaño del ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        icon = QIcon(svg_pixmap)
+        self.descargar_btn.setIcon(icon)
+        self.descargar_btn.setIconSize(svg_pixmap.size())
+        self.descargar_btn.clicked.connect(self.click_instalar)
+        self.descargar_btn.hide()
+
+
+        # Crear frames
+        frame_izquierda = QFrame()
+        frame_izquierda.setStyleSheet(frame_style)
+        layout_izquierda = QGridLayout()
+        layout_izquierda.addWidget(label_desde, 0, 0)
+        layout_izquierda.addWidget(self.input1, 0, 1)
+        layout_izquierda.setContentsMargins(10, 10, 10, 10)  # Añadir márgenes internos
+        layout_izquierda.setSpacing(15)  # Añadir espacio entre los widgets
+        frame_izquierda.setLayout(layout_izquierda)
+
+        frame_derecha = QFrame()
+        frame_derecha.setStyleSheet(frame_style)
+        layout_derecha = QGridLayout()
+        layout_derecha.addWidget(label_fins, 0, 0)
+        layout_derecha.addWidget(self.input2, 0, 1)
+        layout_derecha.setContentsMargins(10, 10, 10, 10)  # Añadir márgenes internos
+        layout_derecha.setSpacing(15)  # Añadir espacio entre los widgets
+        frame_derecha.setLayout(layout_derecha)
+
+        # Layout superior para las dos secciones
+        layout_superior = QGridLayout()
+        layout_superior.addWidget(frame_izquierda, 0, 0)
+        layout_superior.addWidget(frame_derecha, 0, 1)
+        layout_superior.setContentsMargins(20, 20, 20, 20)  # Márgenes alrededor del layout superior
+        layout_superior.setSpacing(20)  # Espaciado entre los frames
+
+        # Layout principal
+        layoutCentral = QGridLayout()
+        layoutCentral.addLayout(layout_superior, 0, 0)
+        layoutCentral.addWidget(generar_btn, 1, 0)
+        layoutCentral.addWidget(self.descargar_btn, 2, 0)
+        layoutCentral.setContentsMargins(30, 30, 30, 30)  # Márgenes alrededor de todo el layout central
+        layoutCentral.setSpacing(20)  # Espacio entre botones y otros elementos
+
+        # Establecer el layout central en un widget contenedor
+        self.generar_fechas()
+        contenedor_widget = QWidget()
+        contenedor_widget.setLayout(layoutCentral)
+        self.setCentralWidget(contenedor_widget)
+
+
+    def generar_fechas(self):
+        dia_actual = datetime.now()
+
+        # Formatear la fecha actual en formato dd/mm/yyyy
+        self.input2.setText(dia_actual.strftime("%d/%m/%Y"))
+
+        # Obtener el primer día del mes actual
+        primer_dia_mes = dia_actual.replace(day=1)
+        
+        # Formatear el primer día del mes en formato dd/mm/yyyy
+        self.input1.setText(primer_dia_mes.strftime("%d/%m/%Y"))
+
+        
+
+        #Eliminar ventana padre
+
+
+    def click_generar(self):
+        try:
+            # Convertir ambas fechas a objetos datetime para poder compararlas
+            fecha1 = datetime.strptime(self.input1.text(), "%d/%m/%Y")
+            fecha2 = datetime.strptime(self.input2.text(), "%d/%m/%Y")
+            
+
+            # Comparar si la primera fecha es menor que la segunda
+            if fecha1 < fecha2:
+                self.input1_content = self.input1.text()
+                self.input2_content = self.input2.text()
+
+                self.cargar_datos()
+            else:
+                ventana_error = VentanaError("La primera data ha de ser anterior a la segona", self)
+                ventana_error.exec()
+
+        except ValueError:
+            # Capturar el error si los inputs no son fechas válidas
+            ventana_error = VentanaError("La data no té un format vàlid", self)
+            ventana_error.exec()        
+
+    def cargar_datos(self):
+        try:
+            # Conectar a la base de datos
+            conn = sqlite3.connect('data/data.db')
+            cursor = conn.cursor()
+            #print(fecha1)
+            #print(fecha2)
+
+            # Seleccionar los campos 'Servei', 'Fecha' y 'Preu' de la tabla 'Serveis'
+            cursor.execute('''
+            SELECT Servei, Fecha, Preu 
+            FROM Serveis 
+            WHERE Fecha BETWEEN ? AND ?
+        ''', (self.input1_content, self.input2_content))
+            
+            # Obtener todos los resultados
+            resultados = cursor.fetchall()
+            if not resultados:
+                ventana_error = VentanaError("No hi han registres de serveis en aquesta data", self)
+                ventana_error.exec()
+                return 
+            
+            # Guardar los datos en una lista o hacer algo con ellos
+            servicios = []
+            for row in resultados:
+                # Cada fila contiene ('Servei', 'Fecha', 'Preu')
+                servicio = {
+                    'Servei': row[0],
+                    'Fecha': row[1],
+                    'Preu': row[2]
+                }
+                servicios.append(servicio)
+
+            # Devolver o procesar los datos
+            self.construirExcel(servicios)
+
+        except sqlite3.Error as e:
+            print(f"Error al acceder a la base de datos: {e}")
+
+        finally:
+            # Cerrar la conexión a la base de datos
+            if conn:
+                conn.close()
+
+    def construirExcel(self, servicios, nombre_archivo='excels/facturacio.xlsx'):
+        # Crear un nuevo libro de trabajo de Excel
+        wb = Workbook()
+        ws = wb.active
+
+        # Añadir cabeceras para la primera parte del Excel
+
+        font_bold = Font(bold=True)
+        fill_orange = PatternFill(start_color="FFA500", end_color="FFA500", fill_type="solid")
+
+        headers = ["Data", "Servei", "Preu", "Total"]
+        ws.append(headers)
+
+        # Aplicar el formato a las cabeceras (fondo naranja y negrita)
+        for col in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col)
+            cell.font = font_bold
+            cell.fill = fill_orange
+
+        total_precio = 0  # Inicializar el total de precios
+
+        # Añadir los datos de los servicios
+        for servicio in servicios:
+            fecha = servicio['Fecha']
+            servei = servicio['Servei']
+            preu = servicio['Preu']
+            total_precio += preu
+            preu_simbolo = f"{preu} €"
+            # Añadir una nueva fila con la fecha, el servicio y el precio
+            ws.append([fecha, servei, preu_simbolo, ""])
+
+        # Colocar el total en la cuarta columna, en negrita
+        total_cell = ws.cell(row=ws.max_row + 1, column=4, value=f"{total_precio} €")
+        total_label_cell = ws.cell(row=ws.max_row, column=3, value="Total")
+        total_label_cell.font = Font(bold=True)
+        total_cell.font = Font(bold=True)
+
+        ws.column_dimensions['A'].width = 15  # Ajustar el ancho de la columna A (Fecha)
+        ws.column_dimensions['B'].width = 30  # Ajustar el ancho de la columna B (Servei)
+        ws.column_dimensions['C'].width = 15
+        ws.column_dimensions['D'].width = 15
+        
+
+        # Obtener los datos de "Serveis oferits" y contar los servicios coincidentes
+        
+
+        # Guardar el archivo Excel con el nombre especificado
+        wb.save(nombre_archivo)
+        self.descargar_btn.show()
+
+    def click_instalar(self):
+        # Seleccionar la ubicación donde guardar el archivo
+        destino_archivo, _ = QFileDialog.getSaveFileName(
+            self, 
+            "Guardar archivo como", 
+            "", 
+            "Archivos Excel (*.xlsx);;Todos los archivos (*)"
+        )
+
+        if destino_archivo:
+            # Ruta del archivo que deseas descargar
+            archivo_fuente = 'excels/facturacio.xlsx'  # Cambia esta ruta a tu archivo
+
+            try:
+                # Copiar el archivo a la ubicación seleccionada
+                shutil.copy(archivo_fuente, destino_archivo)
+                self.descargar_btn.hide()
+            except Exception as e:
+                self.descargar_btn.hide()
+                ventana_error = VentanaError("No s'ha pogut descarregar, informa a Martí", self)
+                ventana_error.exec()
+
+
+
+
+
       
 
 

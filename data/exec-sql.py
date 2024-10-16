@@ -1,7 +1,7 @@
 import sqlite3
 
 # Conectar a la base de datos (o crearla si no existe)
-conn = sqlite3.connect('data.db')
+conn = sqlite3.connect('data/data.db')
 
 # Crear un cursor para ejecutar comandos SQL
 cursor = conn.cursor()
@@ -29,6 +29,16 @@ CREATE TABLE IF NOT EXISTS Serveis (
     FOREIGN KEY (Client_id) REFERENCES Client(Id) -- Relación con el cliente
 );
 ''')
+
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS Serveis_oferits (
+    Id INTEGER PRIMARY KEY AUTOINCREMENT,  -- ID autogenerado para el servicio
+    Preu REAL,                             -- Precio del servicio
+    Servei TEXT
+);
+''')
+
+
 
 # Guardar los cambios y cerrar la conexión
 conn.commit()
