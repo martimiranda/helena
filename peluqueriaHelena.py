@@ -3797,6 +3797,8 @@ class VentanaFidelitat(QMainWindow):
             conn.close()
 
     def load_more_clients(self):
+        header_item = self.tablaClientes.horizontalHeaderItem(2)
+        header_text = header_item.text()
         if self.tablaClientes.verticalScrollBar().value() == self.tablaClientes.verticalScrollBar().maximum():
 
             self.offset += self.limit
@@ -3817,6 +3819,8 @@ class VentanaFidelitat(QMainWindow):
                         row_position = self.tablaClientes.rowCount()
                         self.tablaClientes.insertRow(row_position)
                         for column, value in enumerate(row):
+                            if column == 2 and header_text == "Primer servei":
+                                value = self.fecha_a_string(value)
                             item = QTableWidgetItem(str(value))  # Convertir el valor a cadena
                             item.setFont(QFont("Arial", 16))  # Ajustar el tamaño de la fuente
                             self.tablaClientes.setItem(row_position, column, item)
