@@ -30,13 +30,7 @@ CREATE TABLE IF NOT EXISTS Serveis (
 );
 ''')
 
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS Serveis_oferits (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,  -- ID autogenerado para el servicio
-    Preu REAL,                             -- Precio del servicio
-    Servei TEXT
-);
-''')
+
 
 
 

@@ -217,7 +217,6 @@ class VentanaServicios(QMainWindow):
 
         # Guardar la variable recibida
         self.parent_window = parent
-
         
 
         self.id_cliente = self.parent_window.id_cliente
@@ -407,6 +406,8 @@ class VentanaServicios(QMainWindow):
                                 value = int(value)
                             # Convertir a cadena y agregar el símbolo de euro
                             value = f'{value}€'
+                        elif column == 0:
+                            value = self.fecha_a_string(value)
                         item = QTableWidgetItem(str(value))  # Convertir el valor a cadena
                         item.setFont(QFont("Arial", 16))  # Ajustar el tamaño de la fuente
                         self.tablaClientes.setItem(row_position, column, item)
@@ -446,6 +447,8 @@ class VentanaServicios(QMainWindow):
                                     value = int(value)
                                 # Convertir a cadena y agregar el símbolo de euro
                                 value = f'{value}€'
+                            elif column == 0:
+                                 value = self.fecha_a_string(value)
                             item = QTableWidgetItem(str(value))  # Convertir el valor a cadena
                             item.setFont(QFont("Arial", 16))  # Ajustar el tamaño de la fuente
                             self.tablaClientes.setItem(row_position, column, item)
@@ -454,11 +457,20 @@ class VentanaServicios(QMainWindow):
             finally:
                 # Asegurarse de cerrar la conexión
                 conn.close()
+
+    def string_a_fecha(self,fecha_str):
+        return datetime.strptime(fecha_str, '%d/%m/%Y').date()
+
+    # Conversión de objeto date a string
+    def fecha_a_string(self,fecha_str):
+        fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')  # Convierte la cadena a objeto datetime
+        return fecha_obj.strftime('%d/%m/%Y')
+
     def cargarCreacionInferior(self):
         self.estructuraCreacionInferior = QWidget(self)  
         # Estilo aplicado al widget que contiene el layout
         self.estructuraCreacionInferior.setStyleSheet("""
-            background-color: transparent;
+            background-color: white;
             border: 1px solid #d3d3d3;
         """)
         
@@ -619,6 +631,7 @@ class VentanaServicios(QMainWindow):
             ventana_error = VentanaError("La data no te un format valid", self)
             ventana_error.exec()
             return
+        fecha = self.string_a_fecha(fecha)
             
         if len(servei.strip()) == 0:
             ventana_error = VentanaError("El servei no pot estar buit", self)
@@ -688,7 +701,7 @@ class VentanaServicios(QMainWindow):
         self.estructuraEdicionInferior = QWidget(self)  
         # Estilo aplicado al widget que contiene el layout
         self.estructuraEdicionInferior.setStyleSheet("""
-            background-color: transparent;
+            background-color: white;
             border: 1px solid #d3d3d3;
         """)
         self.estructuraEdicionInferior.hide()
@@ -1039,11 +1052,13 @@ class VentanaServicios(QMainWindow):
     def aceptar_fecha(self):
         fecha = self.inputFechaEdicion.text().strip()
         patron = r"^(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\d{4}$"
+        fecha_str = fecha
     
         if not re.match(patron, fecha):
             ventana_error = VentanaError("La data no te un format valid", self)
             ventana_error.exec()
             return
+        fecha = self.string_a_fecha(fecha)
 
         conn = sqlite3.connect('data/data.db')
         cursor = conn.cursor()            
@@ -1061,7 +1076,7 @@ class VentanaServicios(QMainWindow):
             # Confirmar los cambios
             conn.commit()
 
-            self.fecha_label_value.setText(fecha)
+            self.fecha_label_value.setText(fecha_str)
 
             self.cargar_servicios()
 
@@ -1698,7 +1713,7 @@ class MainWindow(QMainWindow):
         self.ficha_usuario = QWidget(self)  
         # Estilo aplicado al widget que contiene el layout
         self.ficha_usuario.setStyleSheet("""
-            background-color: transparent;
+            background-color: white;
             border: 1px solid #d3d3d3;
         """)
         self.ficha_usuario.hide()
@@ -2527,7 +2542,7 @@ class MainWindow(QMainWindow):
         self.ficha_creacionUsuario = QWidget(self)  
         # Estilo aplicado al widget que contiene el layout
         self.ficha_creacionUsuario.setStyleSheet("""
-            background-color: transparent;
+            background-color: white;
             border: 1px solid #d3d3d3;
         """)
         self.ficha_creacionUsuario.hide()
@@ -2893,6 +2908,7 @@ class VentanaCalculs(QMainWindow):
         botonFidelidad.setIconSize(svg_pixmap.size())
         botonFidelidad.setStyleSheet(estiloBoton)
         botonFidelidad.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        botonFidelidad.clicked.connect(self.generar_fidelidad)
         frameFidelidad.setLayout(QVBoxLayout())
         frameFidelidad.layout().addWidget(botonFidelidad)
         layoutFondo.addWidget(frameFidelidad, 4, 0)
@@ -2967,6 +2983,9 @@ class VentanaCalculs(QMainWindow):
     def generar_facturacio(self):
         ventana_facturacio = VentanaFacturacio(self)
         ventana_facturacio.show()
+    def generar_fidelidad(self):
+        ventana_fidelidad = VentanaFidelitat(self)
+        ventana_fidelidad.show()
 
         
 
@@ -3318,6 +3337,13 @@ class VentanaFacturacio(QMainWindow):
         contenedor_widget.setLayout(layoutCentral)
         self.setCentralWidget(contenedor_widget)
 
+    def string_a_fecha(self,fecha_str):
+        return datetime.strptime(fecha_str, '%d/%m/%Y').date()
+
+    # Conversión de objeto date a string
+    def fecha_a_string(self,fecha_str):
+        fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')  # Convierte la cadena a objeto datetime
+        return fecha_obj.strftime('%d/%m/%Y')
 
     def generar_fechas(self):
         dia_actual = datetime.now()
@@ -3345,8 +3371,8 @@ class VentanaFacturacio(QMainWindow):
 
             # Comparar si la primera fecha es menor que la segunda
             if fecha1 < fecha2:
-                self.input1_content = self.input1.text()
-                self.input2_content = self.input2.text()
+                self.input1_content = self.string_a_fecha(self.input1.text())
+                self.input2_content = self.string_a_fecha(self.input2.text())
 
                 self.cargar_datos()
             else:
@@ -3425,7 +3451,7 @@ class VentanaFacturacio(QMainWindow):
 
         # Añadir los datos de los servicios
         for servicio in servicios:
-            fecha = servicio['Fecha']
+            fecha = self.fecha_a_string(servicio['Fecha'])
             servei = servicio['Servei']
             preu = servicio['Preu']
             total_precio += preu
@@ -3474,8 +3500,343 @@ class VentanaFacturacio(QMainWindow):
                 ventana_error = VentanaError("No s'ha pogut descarregar, informa a Martí", self)
                 ventana_error.exec()
 
+class VentanaFidelitat(QMainWindow):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Taula de fidelitat")
+        self.setMinimumSize(800, 600)
+        self.generar_estructura_click()
+        self.generar_contenido()
+        layoutPrincipal = QGridLayout()
+        layoutPrincipal.addWidget(self.ficha_click,0,0)  # Añadir el layout de cuadrícula
+        layoutPrincipal.addWidget(self.ficha_botones,0,0)  # Añadir el layout vertical
+    
+        # Configurar el widget principal y establecer el layout
+        contenedor_widget = QWidget(self)
+        contenedor_widget.setLayout(layoutPrincipal)
+        self.setCentralWidget(contenedor_widget)
+        self.parent_window = parent
+        self.parent_window.close()
+        self.show()
+
+    def generar_contenido(self):
+        # Estilos para los botones
+        self.ficha_botones = QWidget(self)  
+        # Estilo aplicado al widget que contiene el layout
+
+        # Crear el layout principal de la ficha de usuario
+        layoutCentral = QGridLayout(self.ficha_botones)
+
+        estilosBoton = """
+            QPushButton {
+                font-size: 16px;
+                border: 1px solid black;
+                border-radius: 10px;
+                padding: 10px 20px;
+            }
+            
+            QPushButton:hover {
+                background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+                border: 2px solid #FFA500;  /* Borde naranja */
+                color: white;  /* Cambiar el color del texto a blanco */
+            }
+        """
+
+        # Crear el layout de cuadrícula
+        layoutCentral.setSpacing(20)  # Espaciado entre botones
+        layoutCentral.setContentsMargins(50, 50, 50, 50)
+
+        # Crear y configurar los botones
+        mesServeis_btn = QPushButton('Clients que han fet més serveis')
+        mesServeis_btn.setStyleSheet(estilosBoton)
+        mesServeis_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        mesServeis_btn.clicked.connect(self.generar_clients_mes_serveis)
+        layoutCentral.addWidget(mesServeis_btn, 0, 0)  # Primera fila, primera columna
+
+        mesAntics_btn = QPushButton('Clients més antics')
+        mesAntics_btn.setStyleSheet(estilosBoton)
+        mesAntics_btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        mesAntics_btn.clicked.connect(self.generar_clients_mes_antics)
+        layoutCentral.addWidget(mesAntics_btn, 1, 0)  # Segunda fila, primera columna
+
+        
 
 
+    def generar_estructura_click(self):
+        self.ficha_click = QWidget(self)  
+
+        layoutClick = QGridLayout(self.ficha_click)
+        self.generar_tabla()
+        self.generar_boton()
+
+        layoutClick.setSpacing(20)  # Espaciado entre botones
+        layoutClick.setContentsMargins(50, 50, 50, 50)
+
+        layoutClick.addWidget(self.tablaClientes,0,0)
+        layoutClick.addWidget(self.boton,1,0)
+        layoutClick.setRowStretch(0,8)
+        layoutClick.setRowStretch(1,2)
+
+
+        self.ficha_click.hide()
+
+    def generar_boton(self):
+        self.boton = QPushButton('Tornar')
+        self.boton.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                border: 1px solid black;
+                border-radius: 10px;
+                padding: 10px 20px;
+            }
+            
+            QPushButton:hover {
+                background-color: rgba(255, 165, 0, 100);  /* Fondo naranja semi-transparente */
+                border: 2px solid #FFA500;  /* Borde naranja */
+                color: white;  /* Cambiar el color del texto a blanco */
+            }
+        """)
+        self.boton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        svg_renderer = QSvgRenderer('assets/back-svg.svg')
+        svg_pixmap = QPixmap(64, 64)  # Elige el tamaño que quieras para tu ícono
+        svg_pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(svg_pixmap)
+        svg_renderer.render(painter)
+        painter.end()
+        iconCrear = QIcon(svg_pixmap)
+
+        self.boton.setIcon(iconCrear)
+        self.boton.setIconSize(svg_pixmap.size())
+        self.boton.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.boton.clicked.connect(self.tornar)
+    
+    def tornar(self):
+        self.ficha_botones.show()
+        self.ficha_click.hide()
+
+    def generar_tabla(self):
+        self.tablaClientes = QTableWidget(self)
+        self.limit = 30
+        self.offset=0
+        self.tablaClientes.setColumnCount(3)  # Número de columnas
+        self.tablaClientes.setHorizontalHeaderLabels(["Nom", "Cognoms", "Variable"])  # Nombres de las columnas
+        self.tablaClientes.verticalScrollBar().valueChanged.connect(self.load_more_clients)
+        self.tablaClientes.setRowCount(0)  # Inicialmente sin filas
+        self.configure_table()
+        #self.tablaClientes.verticalScrollBar().valueChanged.connect(self.load_more_clients)
+
+    def cambiar_nombre_columna(self, nuevo_nombre):
+            # Obtener los nombres actuales de las columnas
+        nombres_columnas = []
+        for col in range(self.tablaClientes.columnCount()):
+            header_item = self.tablaClientes.horizontalHeaderItem(col)
+            if header_item:
+                nombres_columnas.append(header_item.text())
+            else:
+                nombres_columnas.append('')  # En caso de que alguna columna no tenga título
+
+        # Cambiar el nombre de la tercera columna (índice 2)
+        if len(nombres_columnas) > 2:  # Asegurarse de que haya al menos 3 columnas
+            nombres_columnas[2] = nuevo_nombre
+
+        # Aplicar los nuevos nombres a las columnas de la tabla
+        self.tablaClientes.setHorizontalHeaderLabels(nombres_columnas)
+    def configure_table(self):
+        header = self.tablaClientes.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        
+
+        # Ocultar el encabezado vertical
+        self.tablaClientes.verticalHeader().setVisible(False)
+
+        # Estilo para la tabla
+        self.tablaClientes.setStyleSheet("""
+            QTableWidget {
+                background: transparent;
+                border: 1px solid #d3d3d3;
+                border-radius: 10px;
+                
+            }
+            QHeaderView::section {
+                background-color: rgba(255, 165, 0, 100);
+                border: none;
+                font-weight: bold;
+                font-size: 18px;
+                border-radius: 10px;
+            }
+            QTableWidget::item {
+                background-color: rgba(255, 255, 255, 150);
+                border: 1px solid #d3d3d3;
+            }
+
+            QTableWidget::item:selected {
+                background-color: rgba(255, 255, 255, 150); /* Mantener el fondo igual */
+                color: black;  /* El color del texto sigue siendo negro (o cualquier color que prefieras) */
+            }
+            
+        """)
+
+    def generar_clients_mes_serveis(self):
+        self.offset = 0
+        self.cambiar_nombre_columna("Serveis fets")
+        conn = sqlite3.connect('data/data.db')
+        cursor = conn.cursor()
+        try:
+            self.query = '''
+                    SELECT 
+                    Client.Nom, 
+                    Client.Cognoms, 
+                    COUNT(Serveis.Id) AS TotalServeis
+                    FROM 
+                        Client
+                    JOIN 
+                        Serveis ON Client.Id = Serveis.Client_id
+                    GROUP BY 
+                        Client.Id
+                    HAVING 
+                        COUNT(Serveis.Id) > 0
+                    ORDER BY 
+                        TotalServeis DESC  -- Ordenar de mayor a menor cantidad de servicios
+                    LIMIT 
+                        ?                 -- Limitar el número de resultados devueltos
+                    OFFSET 
+                        ?;                 -- Saltar los primeros 0 resultados
+
+                                '''
+
+            params = (f'{self.limit}',f'{self.offset}')
+
+            self.params_list = list(params)
+            cursor.execute(self.query, params)
+
+            rows = cursor.fetchall()
+
+            if len(rows) == 0:
+                # Si no hay resultados, ocultar la tabla y mostrar un mensaje
+                ventana_error = VentanaError("No hi ha cap client que tingui serveis", self)
+                ventana_error.exec()
+
+            else:
+                # Si hay resultados, mostrar la tabla y ocultar el mensaje de "sin datos"
+                self.tablaClientes.setRowCount(0)
+                for row in rows:
+                    row_position = self.tablaClientes.rowCount()
+                    self.tablaClientes.insertRow(row_position)
+                    for column, value in enumerate(row):
+                        
+                        item = QTableWidgetItem(str(value))  # Convertir el valor a cadena
+                        item.setFont(QFont("Arial", 16))  # Ajustar el tamaño de la fuente
+                        self.tablaClientes.setItem(row_position, column, item)
+
+                self.mostrar_click()
+                
+
+        finally:
+            # Asegurarse de cerrar la conexión
+            conn.close()
+
+    def generar_clients_mes_antics(self):
+        self.offset = 0
+        self.cambiar_nombre_columna("Primer servei")
+        conn = sqlite3.connect('data/data.db')
+        cursor = conn.cursor()
+        try:
+            self.query = '''
+            SELECT 
+                Client.Nom, 
+                Client.Cognoms,  
+                MIN(Serveis.Fecha) AS FechaAntigua  -- Obtener la fecha más antigua
+            FROM 
+                Client
+            JOIN 
+                Serveis ON Client.Id = Serveis.Client_id
+            WHERE 
+                Client.Client_antic = 1  -- Solo clientes antiguos
+            GROUP BY 
+                Client.Id  -- Agrupar por cliente
+            HAVING 
+                COUNT(Serveis.Id) > 0  -- Clientes con al menos un servicio
+            ORDER BY 
+                FechaAntigua ASC  -- Ordenar por la fecha más antigua
+            LIMIT ?  -- Limitar el número de resultados
+            OFFSET ?;  -- Saltar los primeros N resultados
+        '''
+
+            params = (f'{self.limit}',f'{self.offset}')
+
+            self.params_list = list(params)
+            cursor.execute(self.query, params)
+
+            rows = cursor.fetchall()
+
+            if len(rows) == 0:
+                # Si no hay resultados, ocultar la tabla y mostrar un mensaje
+                ventana_error = VentanaError("No hi ha cap client antic que tingui serveis", self)
+                ventana_error.exec()
+
+            else:
+                # Si hay resultados, mostrar la tabla y ocultar el mensaje de "sin datos"
+                self.tablaClientes.setRowCount(0)
+                for row in rows:
+                    row_position = self.tablaClientes.rowCount()
+                    self.tablaClientes.insertRow(row_position)
+                    for column, value in enumerate(row):
+                        if column == 2:
+                            value = self.fecha_a_string(value)
+                        item = QTableWidgetItem(str(value))  # Convertir el valor a cadena
+                        item.setFont(QFont("Arial", 16))  # Ajustar el tamaño de la fuente
+                        self.tablaClientes.setItem(row_position, column, item)
+
+                self.mostrar_click()
+                
+
+        finally:
+            # Asegurarse de cerrar la conexión
+            conn.close()
+
+    def load_more_clients(self):
+        if self.tablaClientes.verticalScrollBar().value() == self.tablaClientes.verticalScrollBar().maximum():
+
+            self.offset += self.limit
+            conn = sqlite3.connect('data/data.db')
+            cursor = conn.cursor()
+            self.params_list[-1] = f'{self.offset}'
+            params = tuple(self.params_list)
+            try:
+                cursor.execute(self.query, params)
+
+                rows = cursor.fetchall()
+
+                if len(rows) == 0:
+                    pass
+                else:
+                    # Si hay resultados, mostrar la tabla y ocultar el mensaje de "sin datos"
+                    for row in rows:
+                        row_position = self.tablaClientes.rowCount()
+                        self.tablaClientes.insertRow(row_position)
+                        for column, value in enumerate(row):
+                            item = QTableWidgetItem(str(value))  # Convertir el valor a cadena
+                            item.setFont(QFont("Arial", 16))  # Ajustar el tamaño de la fuente
+                            self.tablaClientes.setItem(row_position, column, item)
+
+                
+            finally:
+                # Asegurarse de cerrar la conexión
+                conn.close()
+
+    def fecha_a_string(self,fecha_str):
+        fecha_obj = datetime.strptime(fecha_str, '%Y-%m-%d')  # Convierte la cadena a objeto datetime
+        return fecha_obj.strftime('%d/%m/%Y')
+
+    def mostrar_click(self):
+        self.ficha_botones.hide()
+        self.ficha_click.show()
+
+
+    
+    
 
 
       

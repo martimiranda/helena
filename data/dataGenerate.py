@@ -1,32 +1,51 @@
 import sqlite3
 import random
+from faker import Faker
+from datetime import datetime
 
-# Conectar a la base de datos (o crearla si no existe)
-conn = sqlite3.connect('data.db')
+# Crear una instancia de Faker para generar datos falsos
+fake = Faker()
 
-# Crear un cursor para ejecutar comandos SQL
+# Conectar a la base de datos
+conn = sqlite3.connect('data/data.db')
 cursor = conn.cursor()
 
-# Generar datos ficticios para 100 clientes
-nombres = ['Helena', 'Carla', 'Marta', 'Joan', 'Alex', 'Marc', 'Sofia', 'Laura', 'Maria', 'Cristina']
-apellidos = ['Garcia', 'Martinez', 'Lopez', 'Sanchez', 'Gomez', 'Fernandez', 'Ruiz', 'Diaz', 'Perez', 'Torres']
-colores = ['rojo', 'azul', 'verde', 'negro', 'blanco', 'morado', 'amarillo']
-
-# Insertar 100 registros en la tabla Client
-for i in range(100):
-    nombre = random.choice(nombres)
-    apellido = random.choice(apellidos)
-    telefono = f'6{random.randint(10000000, 99999999)}'  # Genera un teléfono aleatorio que empieza por 6
+# Función para insertar datos en la tabla Client
+def insert_client():
+    nom = fake.first_name()
+    cognoms = fake.last_name()
+    telefon = fake.phone_number()
     client_antic = random.choice([0, 1, None])  # Cliente antiguo puede ser 0, 1 o NULL
-    color = random.choice(colores)
-    
+    color = fake.color_name()
+
     cursor.execute('''
         INSERT INTO Client (Nom, Cognoms, Telefon, Client_antic, Color)
         VALUES (?, ?, ?, ?, ?)
-    ''', (nombre, apellido, telefono, client_antic, color))
+    ''', (nom, cognoms, telefon, client_antic, color))
 
-# Guardar los cambios y cerrar la conexión
-conn.commit()
+    conn.commit()
+    return cursor.lastrowid  # Devuelve el ID del cliente insertado
+
+# Función para insertar datos en la tabla Serveis
+def insert_servei(client_id):
+    fecha = fake.date_this_decade()  # Fecha en esta década
+    preu = round(random.uniform(10.0, 100.0), 2)  # Precio aleatorio entre 10 y 100
+    servei = fake.word()  # Servicio como una palabra aleatoria
+
+    cursor.execute('''
+        INSERT INTO Serveis (Client_id, Fecha, Preu, Servei)
+        VALUES (?, ?, ?, ?)
+    ''', (client_id, fecha, preu, servei))
+
+    conn.commit()
+
+# Insertar varios clientes y servicios asociados
+for _ in range(10):  # Inserta 10 clientes
+    client_id = insert_client()
+    for _ in range(random.randint(1, 5)):  # Cada cliente puede tener entre 1 y 5 servicios
+        insert_servei(client_id)
+
+# Cerrar la conexión
 conn.close()
 
-print("100 registros de clientes han sido insertados en la tabla 'Client'.")
+print("Datos generados exitosamente.")
